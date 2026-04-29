@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartBite — Your Nutrition Companion</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ========== AUTH SCREEN ========== -->
+  <div id="auth-screen">
+    <div class="auth-left">
+      <div class="auth-logo">Smart<span>Bite</span></div>
+      <p class="auth-tagline">Your intelligent nutrition companion — track, analyze, and eat smarter every day.</p>
+      <div class="auth-deco-circles">
+        <div class="deco-circle c1"></div>
+        <div class="deco-circle c2"></div>
+      </div>
+    </div>
+    <div class="auth-right">
+      <div class="auth-box">
+        <div class="auth-tabs">
+          <div class="auth-tab active" onclick="switchTab('login')">Sign In</div>
+          <div class="auth-tab" onclick="switchTab('register')">Register</div>
+        </div>
+
+        <!-- LOGIN FORM -->
+        <div id="login-form">
+          <h1 class="auth-title">Welcome back</h1>
+          <p class="auth-sub">Track your nutrition journey</p>
+          <div class="field">
+            <label>Email</label>
+            <input type="email" id="login-email" placeholder="you@example.com">
+          </div>
+          <div class="field">
+            <label>Password</label>
+            <input type="password" id="login-pass" placeholder="••••••••">
+          </div>
+          <button class="btn-primary" onclick="doLogin()">Sign In</button>
+          <p class="auth-switch">Don't have an account? <a onclick="switchTab('register')">Register</a></p>
+        </div>
+
+        <!-- REGISTER FORM -->
+        <div id="register-form" style="display:none">
+          <h1 class="auth-title">Create account</h1>
+          <p class="auth-sub">Let's personalize your experience</p>
+          <div class="field-row">
+            <div class="field"><label>First Name</label><input type="text" id="reg-fname" placeholder="Juan"></div>
+            <div class="field"><label>Last Name</label><input type="text" id="reg-lname" placeholder="Cruz"></div>
+          </div>
+          <div class="field"><label>Email</label><input type="email" id="reg-email" placeholder="you@example.com"></div>
+          <div class="field"><label>Password</label><input type="password" id="reg-pass" placeholder="min. 6 characters"></div>
+          <div class="field-row">
+            <div class="field"><label>Age</label><input type="number" id="reg-age" placeholder="25" min="10" max="100"></div>
+            <div class="field"><label>Gender</label>
+              <select id="reg-gender">
+                <option value="">Select</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Height (cm)</label><input type="number" id="reg-height" placeholder="170" min="100" max="250"></div>
+            <div class="field"><label>Weight (kg)</label><input type="number" id="reg-weight" placeholder="65" min="30" max="300"></div>
+          </div>
+          <div class="field"><label>Goal</label>
+            <select id="reg-goal">
+              <option value="lose">Lose Weight</option>
+              <option value="maintain">Maintain Weight</option>
+              <option value="gain">Gain Muscle</option>
+              <option value="healthy">Eat Healthier</option>
+            </select>
+          </div>
+          <button class="btn-primary" onclick="doRegister()">Create Account</button>
+          <p class="auth-switch">Already have an account? <a onclick="switchTab('login')">Sign In</a></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== APP SCREEN ========== -->
+  <div id="app-screen" style="display:none">
+    <nav>
+      <div class="nav-logo">Smart<span>Bite</span></div>
+      <div class="nav-links">
+        <button class="nav-link active" onclick="showPage('dashboard')">Dashboard</button>
+        <button class="nav-link" onclick="showPage('log')">Food Log</button>
+        <button class="nav-link" onclick="showPage('recommendations')">Advice</button>
+        <button class="nav-link" onclick="showPage('profile')">Profile</button>
+      </div>
+      <div class="nav-user">
+        <div class="avatar" id="nav-avatar">?</div>
+        <button class="btn-logout" onclick="doLogout()">Logout</button>
+      </div>
+    </nav>
+
+    <div class="main">
+
+      <!-- DASHBOARD PAGE -->
+      <div class="page active" id="page-dashboard">
+        <h1 class="page-title" id="dash-greeting">Good morning!</h1>
+        <p class="page-sub" id="dash-date">Today's nutrition overview</p>
+
+        <div class="bmi-hero">
+          <div class="bmi-hero-left">
+            <div class="bmi-label">Your BMI</div>
+            <div class="bmi-value" id="dash-bmi">--</div>
+            <div class="bmi-cat" id="dash-bmi-cat">--</div>
+            <div class="bmi-note" id="dash-bmi-note"></div>
+          </div>
+          <div class="bmi-hero-right">
+            <div class="cal-label">Today's calories</div>
+            <div class="cal-value" id="dash-cals-today">0</div>
+            <div class="cal-goal" id="dash-cals-goal"></div>
+            <div class="cal-bar-track">
+              <div class="cal-bar-fill" id="dash-cal-bar"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon" style="background:#D8F3DC">🥗</div>
+            <div class="stat-num" id="s-foods">0</div>
+            <div class="stat-lbl">Foods logged today</div>
+            <div class="stat-prog"><div class="stat-prog-bar" id="sp-foods"></div></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background:#FFF3E0">🌿</div>
+            <div class="stat-num" id="s-healthy">0%</div>
+            <div class="stat-lbl">Healthy food ratio</div>
+            <div class="stat-prog"><div class="stat-prog-bar orange" id="sp-healthy"></div></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background:#E3F2FD">🔥</div>
+            <div class="stat-num" id="s-streak">0</div>
+            <div class="stat-lbl">Day logging streak</div>
+            <div class="stat-prog"><div class="stat-prog-bar blue" id="sp-streak"></div></div>
+          </div>
+        </div>
+
+        <h2 class="section-hd">Recent Food Logs</h2>
+        <div class="recent-grid" id="dash-recent"></div>
+
+        <h2 class="section-hd" style="margin-top:1.5rem">Smart Recommendations</h2>
+        <div id="dash-recos"></div>
+      </div>
+
+      <!-- FOOD LOG PAGE -->
+      <div class="page" id="page-log">
+        <h1 class="page-title">Food Log</h1>
+        <p class="page-sub">Track everything you eat and get instant AI analysis</p>
+
+        <div class="log-form">
+          <div class="log-form-title">Log a Meal</div>
+          <div class="log-row">
+            <div class="field" style="margin:0">
+              <label>Food Item</label>
+              <input type="text" id="food-name" placeholder="e.g. Grilled chicken, Fried rice...">
+            </div>
+            <div class="field" style="margin:0">
+              <label>Calories (est.)</label>
+              <input type="number" id="food-cal" placeholder="350" min="0">
+            </div>
+            <div class="field" style="margin:0">
+              <label>Meal Time</label>
+              <select id="food-meal">
+                <option value="breakfast">Breakfast</option>
+                <option value="lunch" selected>Lunch</option>
+                <option value="dinner">Dinner</option>
+                <option value="snack">Snack</option>
+              </select>
+            </div>
+            <div class="field" style="margin:0;display:flex;align-items:flex-end">
+              <button class="btn-primary btn-analyze" onclick="logFood()">Analyze & Log</button>
+            </div>
+          </div>
+          <div id="analysis-area" style="display:none;margin-top:1rem">
+            <div class="analysis-loading" id="analysis-loading">
+              <div class="spinner"></div> Analyzing with AI...
+            </div>
+            <div class="analysis-box" id="analysis-result" style="display:none"></div>
+          </div>
+        </div>
+
+        <h2 class="section-hd">Today's Log</h2>
+        <div class="log-entries" id="log-entries">
+          <div class="empty-state">
+            <div class="empty-icon">🍽️</div>
+            <div>No foods logged yet today</div>
+            <div class="empty-hint">Add your first meal above</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RECOMMENDATIONS PAGE -->
+      <div class="page" id="page-recommendations">
+        <h1 class="page-title">Smart Advice</h1>
+        <p class="page-sub">Personalized recommendations powered by AI</p>
+
+        <div class="reco-page-grid">
+          <div>
+            <div class="settings-card" style="margin-bottom:1rem">
+              <div class="settings-title">Daily Goals Progress</div>
+              <div id="goal-bars"></div>
+            </div>
+            <div class="settings-card">
+              <div class="settings-title">Weekly Insights</div>
+              <div id="weekly-insights">Loading...</div>
+            </div>
+          </div>
+          <div>
+            <div class="ai-chat">
+              <div class="settings-title" style="margin-bottom:0">Ask SmartBite AI</div>
+              <div id="ai-messages">
+                <div class="ai-msg ai">Hi! I'm your SmartBite nutrition advisor. Ask me anything about your diet, nutrition tips, or personalized meal ideas! 🥗</div>
+              </div>
+              <div class="ai-input-row">
+                <input class="ai-input" id="ai-input" placeholder="Ask about your nutrition..." onkeydown="if(event.key==='Enter')sendAI()">
+                <button class="btn-send" onclick="sendAI()">Send</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PROFILE PAGE -->
+      <div class="page" id="page-profile">
+        <h1 class="page-title">Profile & Settings</h1>
+        <p class="page-sub">Manage your personal information</p>
+        <div class="profile-grid">
+          <div>
+            <div class="profile-card">
+              <div class="profile-avatar" id="prof-avatar">?</div>
+              <div class="profile-name" id="prof-name">--</div>
+              <div class="profile-detail" id="prof-email">--</div>
+              <div class="profile-stats">
+                <div class="p-stat"><div class="p-stat-val" id="prof-bmi">--</div><div class="p-stat-lbl">BMI</div></div>
+                <div class="p-stat"><div class="p-stat-val" id="prof-wt">--</div><div class="p-stat-lbl">kg</div></div>
+                <div class="p-stat"><div class="p-stat-val" id="prof-ht">--</div><div class="p-stat-lbl">cm</div></div>
+              </div>
+            </div>
+          </div>
+          <div class="settings-card">
+            <div class="settings-section">
+              <div class="settings-title">Personal Info</div>
+              <div class="settings-row">
+                <div class="field"><label>First Name</label><input type="text" id="set-fname"></div>
+                <div class="field"><label>Last Name</label><input type="text" id="set-lname"></div>
+              </div>
+              <div class="settings-row">
+                <div class="field"><label>Age</label><input type="number" id="set-age"></div>
+                <div class="field"><label>Gender</label>
+                  <select id="set-gender">
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="settings-section">
+              <div class="settings-title">Body Metrics</div>
+              <div class="settings-row">
+                <div class="field"><label>Height (cm)</label><input type="number" id="set-height"></div>
+                <div class="field"><label>Weight (kg)</label><input type="number" id="set-weight"></div>
+              </div>
+            </div>
+            <div class="settings-section">
+              <div class="settings-title">Goals</div>
+              <div class="field"><label>Primary Goal</label>
+                <select id="set-goal">
+                  <option value="lose">Lose Weight</option>
+                  <option value="maintain">Maintain Weight</option>
+                  <option value="gain">Gain Muscle</option>
+                  <option value="healthy">Eat Healthier</option>
+                </select>
+              </div>
+              <div class="field"><label>Daily Calorie Target</label><input type="number" id="set-cals" placeholder="2000"></div>
+            </div>
+            <button class="btn-save" onclick="saveProfile()">Save Changes</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /.main -->
+  </div><!-- /#app-screen -->
+
+  <div class="toast" id="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
