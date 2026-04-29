@@ -2,31 +2,16 @@
    SMARTBITE — app.js  (Firebase Edition)
    ============================================= */
 
-// ---- Firebase Config ----
-// 🔴 REPLACE these values with your own Firebase project config
-// (Firebase Console → Project Settings → Your Apps → SDK setup)
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
-import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-analytics.js";
-import {
-  getAuth,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/12.12.1/firebase-auth.js";
-import {
-  getFirestore,
-  doc,
-  setDoc,
-  getDoc,
-  collection,
-  addDoc,
-  getDocs,
-  deleteDoc,
-  query,
-  orderBy
-} from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+import { initializeApp }                          from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAnalytics }                           from "https://www.gstatic.com/firebasejs/10.12.0/firebase-analytics.js";
+import { getAuth, createUserWithEmailAndPassword,
+         signInWithEmailAndPassword, signOut,
+         onAuthStateChanged }                     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc,
+         collection, addDoc, getDocs,
+         deleteDoc, query, orderBy }              from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
+// ---- Your Firebase Config ----
 const firebaseConfig = {
   apiKey:            "AIzaSyANwVw-0M0P3i9WsgVAfVY5eefJRjl2RCA",
   authDomain:        "smbite12.firebaseapp.com",
@@ -44,8 +29,8 @@ const auth        = getAuth(firebaseApp);
 const db          = getFirestore(firebaseApp);
 
 // ---- Global State ----
-let USER     = null;   // profile object from Firestore
-let FOOD_LOG = [];     // cached entries (refreshed on page load)
+let USER     = null;
+let FOOD_LOG = [];
 
 // =============================================================================
 // UTILITIES
@@ -105,31 +90,26 @@ function calcStreak() {
 // FIRESTORE HELPERS
 // =============================================================================
 
-/** Save or update the user profile document */
 async function saveUserProfile(uid, data) {
   await setDoc(doc(db, 'users', uid), data, { merge: true });
 }
 
-/** Fetch the user profile document */
 async function fetchUserProfile(uid) {
   const snap = await getDoc(doc(db, 'users', uid));
   return snap.exists() ? snap.data() : null;
 }
 
-/** Add a food-log entry for the current user */
 async function addFoodEntry(entry) {
   const ref = await addDoc(collection(db, 'users', auth.currentUser.uid, 'foodLog'), entry);
   return ref.id;
 }
 
-/** Fetch all food-log entries for the current user */
 async function fetchFoodLog(uid) {
   const q    = query(collection(db, 'users', uid, 'foodLog'), orderBy('date', 'asc'));
   const snap = await getDocs(q);
   return snap.docs.map(d => ({ firestoreId: d.id, ...d.data() }));
 }
 
-/** Delete a single food-log entry */
 async function deleteFoodEntry(firestoreId) {
   await deleteDoc(doc(db, 'users', auth.currentUser.uid, 'foodLog', firestoreId));
 }
@@ -138,7 +118,6 @@ async function deleteFoodEntry(firestoreId) {
 // AUTH
 // =============================================================================
 
-/** Listen for Firebase auth state changes (page load / refresh) */
 onAuthStateChanged(auth, async (firebaseUser) => {
   if (firebaseUser) {
     USER     = await fetchUserProfile(firebaseUser.uid);
@@ -175,7 +154,6 @@ async function doLogin() {
   if (!email || !pass) { showToast('Please fill in all fields'); return; }
   try {
     await signInWithEmailAndPassword(auth, email, pass);
-    // onAuthStateChanged handles the rest
   } catch (err) {
     showToast(err.code === 'auth/invalid-credential'
       ? 'Incorrect email or password'
@@ -200,7 +178,7 @@ async function doRegister() {
   if (pass.length < 6) { showToast('Password must be at least 6 characters'); return; }
 
   try {
-    const cred = await createUserWithEmailAndPassword(auth, email, pass);
+    const cred    = await createUserWithEmailAndPassword(auth, email, pass);
     const profile = {
       fname, lname, email,
       age: +age, gender, height: +height, weight: +weight, goal,
@@ -208,7 +186,6 @@ async function doRegister() {
     };
     await saveUserProfile(cred.user.uid, profile);
     showToast('Account created! Welcome, ' + fname + '!');
-    // onAuthStateChanged fires and calls enterApp()
   } catch (err) {
     showToast('Registration failed: ' + err.message);
   }
@@ -374,7 +351,7 @@ async function logFood() {
   document.getElementById('analysis-loading').style.display = 'flex';
   document.getElementById('analysis-result').style.display  = 'none';
 
-  let rating    = 'moderate';
+  let rating     = 'moderate';
   let resultHTML = '';
 
   try {
@@ -392,12 +369,12 @@ async function logFood() {
       })
     });
 
-    const data     = await res.json();
-    const text     = data.content.map(i => i.text || '').join('');
-    const clean    = text.replace(/```json|```/g, '').trim();
-    const parsed   = JSON.parse(clean);
-    rating         = parsed.rating || 'moderate';
-    const finalCal = cal || parsed.calories_estimate || 200;
+    const data        = await res.json();
+    const text        = data.content.map(i => i.text || '').join('');
+    const clean       = text.replace(/```json|```/g, '').trim();
+    const parsed      = JSON.parse(clean);
+    rating            = parsed.rating || 'moderate';
+    const finalCal    = cal || parsed.calories_estimate || 200;
     const badgeClass  = rating === 'healthy' ? 'badge-healthy' : rating === 'unhealthy' ? 'badge-unhealthy' : 'badge-moderate';
     const ratingLabel = rating.charAt(0).toUpperCase() + rating.slice(1);
 
@@ -419,8 +396,6 @@ async function logFood() {
       date: new Date().toISOString(),
       analysis: parsed.analysis
     };
-
-    // Save to Firestore
     const firestoreId = await addFoodEntry(entry);
     FOOD_LOG.push({ firestoreId, ...entry });
 
@@ -434,7 +409,6 @@ async function logFood() {
     };
     const firestoreId = await addFoodEntry(entry);
     FOOD_LOG.push({ firestoreId, ...entry });
-    showToast('Food logged!');
   }
 
   renderLogEntries();
@@ -445,7 +419,7 @@ async function logFood() {
 
   document.getElementById('analysis-loading').style.display = 'none';
   document.getElementById('analysis-result').style.display  = 'block';
-  document.getElementById('analysis-result').innerHTML       = resultHTML;
+  document.getElementById('analysis-result').innerHTML      = resultHTML;
 }
 
 function renderLogEntries() {
@@ -471,7 +445,7 @@ function renderLogEntries() {
         <span class="entry-name">${f.name}</span>
         <span class="entry-cal">${f.calories} kcal</span>
         <span class="entry-badge ${badgeClass}">${f.rating}</span>
-        <button onclick="deleteEntry('${f.firestoreId}')"
+        <button onclick="window.deleteEntry('${f.firestoreId}')"
           style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:1rem;padding:.2rem .4rem;border-radius:6px"
           title="Delete">✕</button>
       </div>`;
@@ -502,8 +476,8 @@ function loadGoalBars() {
 
   const bars = [
     { label: 'Calories',      val: Math.min(100, Math.round(totalCals / target * 100)), detail: totalCals + ' / ' + target + ' kcal',     color: 'var(--green)' },
-    { label: 'Healthy Foods', val: healthyPct,                                          detail: healthyPct + '% of logged items',          color: '#52B788' },
-    { label: 'Meals Logged',  val: Math.min(100, Math.round(todayLogs.length / 4 * 100)), detail: todayLogs.length + ' of 4 recommended', color: 'var(--blue)' },
+    { label: 'Healthy Foods', val: healthyPct,                                          detail: healthyPct + '% of logged items',          color: '#52B788'      },
+    { label: 'Meals Logged',  val: Math.min(100, Math.round(todayLogs.length / 4 * 100)), detail: todayLogs.length + ' of 4 recommended', color: 'var(--blue)'  },
   ];
 
   document.getElementById('goal-bars').innerHTML = bars.map(b => `
@@ -557,7 +531,7 @@ async function sendAI() {
   const msgs = document.getElementById('ai-messages');
   msgs.innerHTML += `<div class="ai-msg user">${msg}</div>`;
   msgs.innerHTML += `<div class="ai-msg ai" id="ai-typing"><div class="spinner" style="width:14px;height:14px;border-width:2px"></div></div>`;
-  msgs.scrollTop = msgs.scrollHeight;
+  msgs.scrollTop  = msgs.scrollHeight;
 
   const today     = new Date().toDateString();
   const todayLogs = FOOD_LOG.filter(f => new Date(f.date).toDateString() === today).map(f => f.name).join(', ') || 'nothing yet';
@@ -611,7 +585,6 @@ async function saveProfile() {
   USER.cals   = +document.getElementById('set-cals').value
     || calcCalTarget(USER.age, USER.gender, USER.height, USER.weight, USER.goal);
 
-  // Save to Firestore
   await saveUserProfile(auth.currentUser.uid, USER);
 
   const init = getInitials(USER);
@@ -620,3 +593,17 @@ async function saveProfile() {
   updateDashboard();
   showToast('Profile saved successfully!');
 }
+
+// =============================================================================
+// EXPOSE TO GLOBAL SCOPE (required for HTML onclick handlers)
+// =============================================================================
+window.switchTab              = switchTab;
+window.doLogin                = doLogin;
+window.doRegister             = doRegister;
+window.doLogout               = doLogout;
+window.showPage               = showPage;
+window.logFood                = logFood;
+window.deleteEntry            = deleteEntry;
+window.saveProfile            = saveProfile;
+window.sendAI                 = sendAI;
+window.generateWeeklyInsights = generateWeeklyInsights;
