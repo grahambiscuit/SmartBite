@@ -522,42 +522,6 @@ async function generateWeeklyInsights() {
   }
 }
 
-async function sendAI() {
-  const input = document.getElementById('ai-input');
-  const msg   = input.value.trim();
-  if (!msg) return;
-  input.value = '';
-
-  const msgs = document.getElementById('ai-messages');
-  msgs.innerHTML += `<div class="ai-msg user">${msg}</div>`;
-  msgs.innerHTML += `<div class="ai-msg ai" id="ai-typing"><div class="spinner" style="width:14px;height:14px;border-width:2px"></div></div>`;
-  msgs.scrollTop  = msgs.scrollHeight;
-
-  const today     = new Date().toDateString();
-  const todayLogs = FOOD_LOG.filter(f => new Date(f.date).toDateString() === today).map(f => f.name).join(', ') || 'nothing yet';
-  const bmi       = USER ? calcBMI(USER.height, USER.weight) : '22';
-
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        system: `You are SmartBite, a friendly nutrition AI advisor. User profile: name=${USER?.fname}, goal=${USER?.goal}, BMI=${bmi}, today's food: ${todayLogs}. Give helpful, personalized nutrition advice. Keep responses concise (2-3 sentences max).`,
-        messages: [{ role: 'user', content: msg }]
-      })
-    });
-    const data  = await res.json();
-    const reply = data.content.map(i => i.text || '').join('');
-    document.getElementById('ai-typing').outerHTML = `<div class="ai-msg ai">${reply}</div>`;
-  } catch {
-    document.getElementById('ai-typing').outerHTML = `<div class="ai-msg ai">I'm having trouble connecting right now. Please try again!</div>`;
-  }
-
-  msgs.scrollTop = msgs.scrollHeight;
-}
-
 // =============================================================================
 // PROFILE
 // =============================================================================
@@ -605,5 +569,4 @@ window.showPage               = showPage;
 window.logFood                = logFood;
 window.deleteEntry            = deleteEntry;
 window.saveProfile            = saveProfile;
-window.sendAI                 = sendAI;
 window.generateWeeklyInsights = generateWeeklyInsights;
