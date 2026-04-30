@@ -6,6 +6,43 @@
   <title>SmartBite — Your Nutrition Companion</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <style>
+    .tips-panel { display: flex; flex-direction: column; gap: 1rem; }
+    .goal-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: #D8F3DC; color: #1B6B3A; font-size: 13px;
+      font-weight: 500; padding: 6px 14px; border-radius: 999px;
+      margin-bottom: 0.25rem; width: fit-content;
+    }
+    .tip-card {
+      display: flex; align-items: flex-start; gap: 14px;
+      background: #fff; border: 0.5px solid #e5e7eb;
+      border-radius: 12px; padding: 1rem 1.25rem;
+      transition: box-shadow 0.2s;
+    }
+    .tip-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.07); }
+    .tip-icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; flex-shrink: 0;
+    }
+    .tip-body { flex: 1; }
+    .tip-title { font-size: 14px; font-weight: 600; color: #111; margin: 0 0 4px; }
+    .tip-desc { font-size: 13px; color: #555; line-height: 1.6; margin: 0; }
+    .tip-tag {
+      display: inline-block; font-size: 11px; font-weight: 500;
+      padding: 2px 8px; border-radius: 999px; margin-top: 6px;
+    }
+    .did-you-know {
+      border-left: 3px solid #4CAF50; background: #F1F8F2;
+      border-radius: 0 10px 10px 0; padding: 0.9rem 1.1rem;
+      font-size: 13px; color: #2e5e35; line-height: 1.6;
+    }
+    .did-you-know strong {
+      display: block; font-size: 11px; letter-spacing: 0.06em;
+      text-transform: uppercase; margin-bottom: 4px; color: #4CAF50;
+    }
+  </style>
 </head>
 <body>
 
@@ -200,9 +237,11 @@
       <!-- RECOMMENDATIONS PAGE -->
       <div class="page" id="page-recommendations">
         <h1 class="page-title">Smart Advice</h1>
-        <p class="page-sub">Personalized recommendations powered by AI</p>
+        <p class="page-sub">Personalized tips based on your health goal</p>
 
         <div class="reco-page-grid">
+
+          <!-- LEFT COLUMN -->
           <div>
             <div class="settings-card" style="margin-bottom:1rem">
               <div class="settings-title">Daily Goals Progress</div>
@@ -213,6 +252,77 @@
               <div id="weekly-insights">Loading...</div>
             </div>
           </div>
+
+          <!-- RIGHT COLUMN: Nutrition Tips -->
+          <div class="settings-card">
+            <div class="settings-title" style="margin-bottom:0.75rem">Nutrition Tips</div>
+            <div class="tips-panel" id="nutrition-tips-panel">
+
+              <div class="goal-badge" id="tips-goal-badge">🎯 Your Goal</div>
+
+              <div class="tip-card">
+                <div class="tip-icon" style="background:#D8F3DC">🥦</div>
+                <div class="tip-body">
+                  <p class="tip-title">Fill half your plate with vegetables</p>
+                  <p class="tip-desc">Non-starchy vegetables are low in calories and high in fiber, keeping you full longer while supplying essential vitamins and minerals.</p>
+                  <span class="tip-tag" style="background:#D8F3DC;color:#1B6B3A;">General Health</span>
+                </div>
+              </div>
+
+              <div class="tip-card">
+                <div class="tip-icon" style="background:#E3F2FD">💧</div>
+                <div class="tip-body">
+                  <p class="tip-title">Stay hydrated throughout the day</p>
+                  <p class="tip-desc">Drinking 8–10 glasses of water daily supports metabolism, reduces false hunger signals, and improves nutrient absorption.</p>
+                  <span class="tip-tag" style="background:#E3F2FD;color:#1565C0;">Hydration</span>
+                </div>
+              </div>
+
+              <div class="tip-card">
+                <div class="tip-icon" style="background:#FFF3E0">🍗</div>
+                <div class="tip-body">
+                  <p class="tip-title">Prioritize lean protein at every meal</p>
+                  <p class="tip-desc">Protein promotes satiety and has a high thermic effect. Aim for chicken, fish, legumes, or eggs as your primary protein sources.</p>
+                  <span class="tip-tag" style="background:#FFF3E0;color:#E65100;">Macronutrients</span>
+                </div>
+              </div>
+
+              <div class="tip-card">
+                <div class="tip-icon" style="background:#F3E5F5">🌾</div>
+                <div class="tip-body">
+                  <p class="tip-title">Choose whole grains over refined carbs</p>
+                  <p class="tip-desc">Whole grains like brown rice, oats, and quinoa digest slowly, providing sustained energy and preventing blood sugar spikes.</p>
+                  <span class="tip-tag" style="background:#F3E5F5;color:#6A1B9A;">Carbohydrates</span>
+                </div>
+              </div>
+
+              <div class="tip-card">
+                <div class="tip-icon" style="background:#FFFDE7">🕗</div>
+                <div class="tip-body">
+                  <p class="tip-title">Don't skip breakfast</p>
+                  <p class="tip-desc">A balanced breakfast kickstarts your metabolism and reduces the likelihood of overeating later in the day.</p>
+                  <span class="tip-tag" style="background:#FFFDE7;color:#F57F17;">Meal Timing</span>
+                </div>
+              </div>
+
+              <div class="tip-card">
+                <div class="tip-icon" style="background:#FCE4EC">🧂</div>
+                <div class="tip-body">
+                  <p class="tip-title">Watch your sodium intake</p>
+                  <p class="tip-desc">High sodium can cause water retention and raise blood pressure. Limit processed foods and season with herbs and spices instead.</p>
+                  <span class="tip-tag" style="background:#FCE4EC;color:#880E4F;">Minerals</span>
+                </div>
+              </div>
+
+              <div class="did-you-know">
+                <strong>Did you know?</strong>
+                Eating slowly and mindfully can reduce your total calorie intake by up to 20%. It takes about 20 minutes for your brain to register that you're full — so put the fork down between bites.
+              </div>
+
+            </div>
+          </div>
+          <!-- END RIGHT COLUMN -->
+
         </div>
       </div>
 
@@ -280,7 +390,6 @@
 
   <div class="toast" id="toast"></div>
 
-  <!-- ✅ IMPORTANT: type="module" is required for Firebase imports -->
   <script type="module" src="app.js"></script>
 </body>
 </html>
