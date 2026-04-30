@@ -224,7 +224,7 @@ function showPage(p) {
     }
   });
   if (p === 'dashboard')       updateDashboard();
-  if (p === 'recommendations') { loadGoalBars(); generateWeeklyInsights(); }
+  if (p === 'recommendations') { loadGoalBars(); generateWeeklyInsights(); renderNutritionTips(); }
   if (p === 'log')             renderLogEntries();
 }
 
@@ -523,6 +523,226 @@ async function generateWeeklyInsights() {
 }
 
 // =============================================================================
+// NUTRITION TIPS PANEL
+// =============================================================================
+
+// All available tips, each tagged with which goals they apply to.
+// 'all' means the tip shows for every goal.
+const NUTRITION_TIPS = [
+  // ── Lose Weight ────────────────────────────────────────────────────────────
+  {
+    goals: ['lose'],
+    icon: '🔻', iconBg: '#FCE4EC',
+    title: 'Create a moderate calorie deficit',
+    desc: 'Aim for 300–500 kcal below your TDEE daily. Cutting too aggressively slows metabolism and causes muscle loss — steady wins the race.',
+    tag: 'Calorie Control', tagBg: '#FCE4EC', tagColor: '#880E4F'
+  },
+  {
+    goals: ['lose'],
+    icon: '🥚', iconBg: '#FFF3E0',
+    title: 'Front-load protein at every meal',
+    desc: 'High protein (1.6–2 g/kg body weight) preserves lean mass during a deficit and keeps hunger at bay longer than carbs or fat.',
+    tag: 'Satiety', tagBg: '#FFF3E0', tagColor: '#E65100'
+  },
+  {
+    goals: ['lose'],
+    icon: '🧃', iconBg: '#FCE4EC',
+    title: 'Cut liquid calories first',
+    desc: 'Sodas, juices, and fancy coffees can quietly add 300–500 kcal a day. Switching to water, black coffee, or unsweetened tea is the easiest deficit win.',
+    tag: 'Quick Win', tagBg: '#FCE4EC', tagColor: '#880E4F'
+  },
+  {
+    goals: ['lose'],
+    icon: '🫙', iconBg: '#E8F5E9',
+    title: 'Prep meals in advance',
+    desc: 'Batch-cooking on weekends means you always have a low-calorie option ready, reducing the chance of impulse, high-calorie choices when hungry.',
+    tag: 'Habit', tagBg: '#E8F5E9', tagColor: '#1B6B3A'
+  },
+
+  // ── Maintain Weight ────────────────────────────────────────────────────────
+  {
+    goals: ['maintain'],
+    icon: '⚖️', iconBg: '#E3F2FD',
+    title: 'Eat at your TDEE, not below',
+    desc: 'Maintenance means matching energy in with energy out. Use your calorie target as a daily anchor, not a ceiling to come in under.',
+    tag: 'Balance', tagBg: '#E3F2FD', tagColor: '#1565C0'
+  },
+  {
+    goals: ['maintain'],
+    icon: '📊', iconBg: '#F3E5F5',
+    title: 'Track weight weekly, not daily',
+    desc: 'Weight fluctuates 1–2 kg daily from water and food volume. A 7-day rolling average gives a cleaner picture of whether you\'re truly maintaining.',
+    tag: 'Monitoring', tagBg: '#F3E5F5', tagColor: '#6A1B9A'
+  },
+  {
+    goals: ['maintain'],
+    icon: '🔄', iconBg: '#FFF9C4',
+    title: 'Cycle calories around activity',
+    desc: 'Eat slightly more on active days and slightly less on rest days. This keeps your weekly average on target while fueling performance.',
+    tag: 'Flexibility', tagBg: '#FFF9C4', tagColor: '#F57F17'
+  },
+
+  // ── Gain Muscle ────────────────────────────────────────────────────────────
+  {
+    goals: ['gain'],
+    icon: '💪', iconBg: '#E8F5E9',
+    title: 'Eat in a lean calorie surplus',
+    desc: 'Adding 200–300 kcal above maintenance maximises muscle gain while minimising fat accumulation — a "slow bulk" approach.',
+    tag: 'Bulking', tagBg: '#E8F5E9', tagColor: '#1B6B3A'
+  },
+  {
+    goals: ['gain'],
+    icon: '🥩', iconBg: '#FFF3E0',
+    title: 'Hit 1.6–2.2 g of protein per kg',
+    desc: 'Muscle protein synthesis plateaus above ~2.2 g/kg. Spread intake across 3–5 meals for maximum stimulation throughout the day.',
+    tag: 'Protein', tagBg: '#FFF3E0', tagColor: '#E65100'
+  },
+  {
+    goals: ['gain'],
+    icon: '🍠', iconBg: '#E3F2FD',
+    title: 'Time carbs around your workouts',
+    desc: 'Carbohydrates replenish muscle glycogen. A carb-rich meal 1–2 hours pre-workout and again post-workout boosts performance and recovery.',
+    tag: 'Nutrient Timing', tagBg: '#E3F2FD', tagColor: '#1565C0'
+  },
+  {
+    goals: ['gain'],
+    icon: '🛌', iconBg: '#EDE7F6',
+    title: 'Prioritise sleep for muscle repair',
+    desc: 'Growth hormone peaks during deep sleep. Aim for 7–9 hours — inadequate sleep blunts the anabolic response even with perfect nutrition.',
+    tag: 'Recovery', tagBg: '#EDE7F6', tagColor: '#4527A0'
+  },
+
+  // ── Eat Healthier ──────────────────────────────────────────────────────────
+  {
+    goals: ['healthy'],
+    icon: '🌈', iconBg: '#E8F5E9',
+    title: 'Eat the rainbow every day',
+    desc: 'Different pigments in fruits and vegetables represent different antioxidants and phytonutrients. Aim for at least 5 colours on your plate daily.',
+    tag: 'Micronutrients', tagBg: '#E8F5E9', tagColor: '#1B6B3A'
+  },
+  {
+    goals: ['healthy'],
+    icon: '🫀', iconBg: '#FCE4EC',
+    title: 'Swap saturated fats for unsaturated',
+    desc: 'Replace butter, coconut oil, and fatty meats with olive oil, avocado, and oily fish. This shift significantly improves cardiovascular markers.',
+    tag: 'Heart Health', tagBg: '#FCE4EC', tagColor: '#880E4F'
+  },
+  {
+    goals: ['healthy'],
+    icon: '🫘', iconBg: '#FFF9C4',
+    title: 'Add legumes three times a week',
+    desc: 'Lentils, chickpeas, and black beans are protein- and fibre-dense, reduce LDL cholesterol, and feed beneficial gut bacteria.',
+    tag: 'Gut Health', tagBg: '#FFF9C4', tagColor: '#F57F17'
+  },
+  {
+    goals: ['healthy'],
+    icon: '🚫', iconBg: '#FAFAFA',
+    title: 'Limit ultra-processed food to < 20%',
+    desc: 'Ultra-processed foods (chips, instant noodles, packaged snacks) are linked to higher all-cause mortality. Keep them the minority, not the majority.',
+    tag: 'Food Quality', tagBg: '#FAFAFA', tagColor: '#555'
+  },
+
+  // ── Universal tips (shown for ALL goals) ───────────────────────────────────
+  {
+    goals: ['all'],
+    icon: '🥦', iconBg: '#D8F3DC',
+    title: 'Fill half your plate with vegetables',
+    desc: 'Non-starchy vegetables are low in calories and high in fibre, keeping you full longer while supplying essential vitamins and minerals.',
+    tag: 'General Health', tagBg: '#D8F3DC', tagColor: '#1B6B3A'
+  },
+  {
+    goals: ['all'],
+    icon: '💧', iconBg: '#E3F2FD',
+    title: 'Stay hydrated throughout the day',
+    desc: 'Drinking 8–10 glasses of water daily supports metabolism, reduces false hunger signals, and improves nutrient absorption.',
+    tag: 'Hydration', tagBg: '#E3F2FD', tagColor: '#1565C0'
+  },
+  {
+    goals: ['all'],
+    icon: '🌾', iconBg: '#F3E5F5',
+    title: 'Choose whole grains over refined carbs',
+    desc: 'Whole grains like brown rice, oats, and quinoa digest slowly, providing sustained energy and preventing blood sugar spikes.',
+    tag: 'Carbohydrates', tagBg: '#F3E5F5', tagColor: '#6A1B9A'
+  },
+  {
+    goals: ['all'],
+    icon: '🕗', iconBg: '#FFFDE7',
+    title: "Don't skip breakfast",
+    desc: 'A balanced breakfast kickstarts your metabolism and reduces the likelihood of overeating later in the day.',
+    tag: 'Meal Timing', tagBg: '#FFFDE7', tagColor: '#F57F17'
+  },
+  {
+    goals: ['all'],
+    icon: '🧂', iconBg: '#FCE4EC',
+    title: 'Watch your sodium intake',
+    desc: 'High sodium can cause water retention and raise blood pressure. Limit processed foods and season with herbs and spices instead.',
+    tag: 'Minerals', tagBg: '#FCE4EC', tagColor: '#880E4F'
+  }
+];
+
+// Goal metadata: human-readable label + badge emoji
+const GOAL_META = {
+  lose:     { label: 'Lose Weight',    emoji: '🎯' },
+  maintain: { label: 'Maintain Weight', emoji: '⚖️' },
+  gain:     { label: 'Gain Muscle',    emoji: '💪' },
+  healthy:  { label: 'Eat Healthier',  emoji: '🌿' }
+};
+
+// "Did you know?" facts keyed by goal
+const DID_YOU_KNOW = {
+  lose:     'Research shows that eating slowly reduces total calorie intake by up to 20% — it takes ~20 minutes for your brain to register fullness. Put the fork down between bites.',
+  maintain: 'Studies show that people who weigh themselves regularly are more successful at long-term weight maintenance. Once a week, same conditions, is the sweet spot.',
+  gain:     'Muscle protein synthesis is maximally stimulated by as little as 20–40 g of high-quality protein per meal. Eating more in one sitting doesn\'t add extra benefit.',
+  healthy:  'The gut microbiome influences mood, immunity, and metabolism. Fermented foods like yogurt, kimchi, and kefir introduce beneficial bacteria that support overall health.'
+};
+
+/**
+ * Renders the Nutrition Tips panel based on the current user's goal.
+ * Safe to call any time USER is set — it fully rebuilds the panel.
+ */
+function renderNutritionTips() {
+  if (!USER) return;
+
+  const goal   = USER.goal || 'healthy';
+  const meta   = GOAL_META[goal] || { label: 'Your Goal', emoji: '🎯' };
+  const factEl = document.getElementById('nutrition-tips-panel');
+  if (!factEl) return;
+
+  // Filter: keep tips tagged for this specific goal OR tagged 'all'
+  const relevant = NUTRITION_TIPS.filter(t => t.goals.includes(goal) || t.goals.includes('all'));
+
+  // Update the goal badge
+  const badge = document.getElementById('tips-goal-badge');
+  if (badge) {
+    badge.textContent = meta.emoji + ' ' + meta.label;
+  }
+
+  // Build tip cards HTML
+  const cardsHTML = relevant.map(t => `
+    <div class="tip-card">
+      <div class="tip-icon" style="background:${t.iconBg}">${t.icon}</div>
+      <div class="tip-body">
+        <p class="tip-title">${t.title}</p>
+        <p class="tip-desc">${t.desc}</p>
+        <span class="tip-tag" style="background:${t.tagBg};color:${t.tagColor}">${t.tag}</span>
+      </div>
+    </div>`).join('');
+
+  // Build "Did you know?" block
+  const didYouKnow = `
+    <div class="did-you-know">
+      <strong>Did you know?</strong>
+      ${DID_YOU_KNOW[goal] || DID_YOU_KNOW['healthy']}
+    </div>`;
+
+  // Re-render the full panel (badge stays in place, cards + fact replace the rest)
+  factEl.innerHTML = `
+    <div class="goal-badge" id="tips-goal-badge">${meta.emoji} ${meta.label}</div>
+    ${cardsHTML}
+    ${didYouKnow}`;
+}
+
+// =============================================================================
 // PROFILE
 // =============================================================================
 
@@ -555,6 +775,10 @@ async function saveProfile() {
   document.getElementById('nav-avatar').textContent  = init;
   document.getElementById('prof-avatar').textContent = init;
   updateDashboard();
+
+  // Re-render tips so they immediately reflect the new goal
+  renderNutritionTips();
+
   showToast('Profile saved successfully!');
 }
 
