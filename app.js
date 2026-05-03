@@ -6,8 +6,7 @@ import { initializeApp }                          from "https://www.gstatic.com/
 import { getAnalytics }                           from "https://www.gstatic.com/firebasejs/10.12.0/firebase-analytics.js";
 import { getAuth, createUserWithEmailAndPassword,
          signInWithEmailAndPassword, signOut,
-         onAuthStateChanged,
-         sendEmailVerification }                  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+         onAuthStateChanged }                     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc,
          collection, addDoc, getDocs,
          deleteDoc, query, orderBy }              from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -29,11 +28,15 @@ const analytics   = getAnalytics(firebaseApp);
 const auth        = getAuth(firebaseApp);
 const db          = getFirestore(firebaseApp);
 
+// ---- EmailJS Config ----
+const EMAILJS_SERVICE_ID  = 'service_xi0um8w';
+const EMAILJS_TEMPLATE_ID = 'template_brnx7yj';
+const EMAILJS_PUBLIC_KEY  = 'koTFYwKltn5wUm99V';
+
 // ---- Global State ----
-let USER          = null;
-let FOOD_LOG      = [];
-let PENDING_OTP   = null;   // { code, email, profile, expires }
-let PENDING_CRED  = null;   // Firebase credential after createUser (pre-profile-save)
+let USER        = null;
+let FOOD_LOG    = [];
+let PENDING_OTP = null; // { code, email, password, profile, expires }
 
 // =============================================================================
 // UTILITIES
@@ -99,11 +102,11 @@ function checkPassStrength() {
   const bar  = document.getElementById('pass-bar');
   const hint = document.getElementById('pass-hint');
   let strength = 0;
-  if (pass.length >= 6)                      strength++;
-  if (pass.length >= 10)                     strength++;
-  if (/[A-Z]/.test(pass))                   strength++;
-  if (/[0-9]/.test(pass))                   strength++;
-  if (/[^A-Za-z0-9]/.test(pass))            strength++;
+  if (pass.length >= 6)               strength++;
+  if (pass.length >= 10)              strength++;
+  if (/[A-Z]/.test(pass))            strength++;
+  if (/[0-9]/.test(pass))            strength++;
+  if (/[^A-Za-z0-9]/.test(pass))     strength++;
 
   const levels = [
     { w: '0%',   bg: 'transparent', text: '' },
@@ -112,12 +115,11 @@ function checkPassStrength() {
     { w: '75%',  bg: '#52B788',     text: 'Good' },
     { w: '100%', bg: '#2D6A4F',     text: 'Strong' },
   ];
-  const lvl   = Math.min(strength, 4);
+  const lvl = Math.min(strength, 4);
   bar.style.width      = levels[lvl].w;
   bar.style.background = levels[lvl].bg;
   hint.textContent     = levels[lvl].text;
   hint.style.color     = levels[lvl].bg;
-
   checkPassMatch();
 }
 
@@ -160,51 +162,38 @@ function acceptTerms() {
 function openOTP(email) {
   document.getElementById('otp-email-display').textContent = email;
   document.getElementById('otp-error').textContent = '';
-  // Clear all inputs
-  for (let i = 1; i <= 6; i++) {
-    document.getElementById('otp-' + i).value = '';
-  }
+  for (let i = 1; i <= 6; i++) document.getElementById('otp-' + i).value = '';
   document.getElementById('otp-screen').style.display = 'flex';
   document.getElementById('otp-1').focus();
 }
 
 function closeOTP() {
   document.getElementById('otp-screen').style.display = 'none';
-  PENDING_OTP  = null;
-  PENDING_CRED = null;
+  PENDING_OTP = null;
 }
 
 function otpMove(el, idx) {
   el.value = el.value.replace(/\D/g, '');
-  if (el.value && idx < 6) {
-    document.getElementById('otp-' + (idx + 1)).focus();
-  }
-  // Auto-verify when all 6 filled
-  const all = Array.from({length:6}, (_,i) => document.getElementById('otp-'+(i+1)).value);
+  if (el.value && idx < 6) document.getElementById('otp-' + (idx + 1)).focus();
+  const all = Array.from({length: 6}, (_, i) => document.getElementById('otp-' + (i + 1)).value);
   if (all.every(v => v)) verifyOTP();
 }
 
 function otpBack(e, idx) {
-  if (e.key === 'Backspace' && !e.target.value && idx > 1) {
+  if (e.key === 'Backspace' && !e.target.value && idx > 1)
     document.getElementById('otp-' + (idx - 1)).focus();
-  }
 }
 
-async function sendOTPEmail(email, code) {
-  // Uses EmailJS free tier — replace with your own service/template IDs
-  // or swap for any email sending API you prefer.
-  // For demo purposes we show the code in the console and toast.
-  console.info(`[SmartBite OTP] Code for ${email}: ${code}`);
+async function sendOTPEmail(email, name, code) {
+  // Initialize EmailJS
+  emailjs.init(EMAILJS_PUBLIC_KEY);
 
-  // --- EmailJS integration (optional, uncomment & configure if desired) ---
-  // await emailjs.send('YOUR_SERVICE_ID', 'YOUR_TEMPLATE_ID', {
-  //   to_email: email,
-  //   otp_code: code,
-  //   app_name: 'SmartBite'
-  // }, 'YOUR_PUBLIC_KEY');
-
-  // Fallback: show in toast so the demo works without email setup
-  showToast(`Your OTP is: ${code}  (check console for production use)`, 6000);
+  await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+    email:      email,       // matches {{email}} in template  → To Email field
+    passcode:   code,        // matches {{passcode}} in template
+    to_name:    name,
+    app_name:   'SmartBite'
+  });
 }
 
 async function resendOTP() {
@@ -215,22 +204,25 @@ async function resendOTP() {
   document.getElementById('otp-error').textContent = '';
   for (let i = 1; i <= 6; i++) document.getElementById('otp-' + i).value = '';
   document.getElementById('otp-1').focus();
-  await sendOTPEmail(PENDING_OTP.email, newCode);
-  showToast('A new code has been sent!');
+  try {
+    await sendOTPEmail(PENDING_OTP.email, PENDING_OTP.profile.fname, newCode);
+    showToast('A new code has been sent to your email!');
+  } catch (err) {
+    showToast('Failed to resend. Check your connection.');
+    console.error('Resend OTP error:', err);
+  }
 }
 
 async function verifyOTP() {
   if (!PENDING_OTP) return;
 
-  const entered = Array.from({length:6}, (_,i) =>
-    document.getElementById('otp-' + (i+1)).value
+  const entered = Array.from({length: 6}, (_, i) =>
+    document.getElementById('otp-' + (i + 1)).value
   ).join('');
 
   const errEl = document.getElementById('otp-error');
 
-  if (entered.length < 6) {
-    errEl.textContent = 'Please enter all 6 digits.'; return;
-  }
+  if (entered.length < 6) { errEl.textContent = 'Please enter all 6 digits.'; return; }
   if (Date.now() > PENDING_OTP.expires) {
     errEl.textContent = 'This code has expired. Please request a new one.'; return;
   }
@@ -241,17 +233,17 @@ async function verifyOTP() {
     return;
   }
 
-  // OTP verified — create Firebase account
+  // OTP correct — create Firebase account
   errEl.textContent = '';
   try {
     const cred = await createUserWithEmailAndPassword(
       auth, PENDING_OTP.email, PENDING_OTP.password
     );
     await saveUserProfile(cred.user.uid, PENDING_OTP.profile);
-    PENDING_OTP  = null;
-    PENDING_CRED = null;
+    const fname = PENDING_OTP.profile.fname;
+    PENDING_OTP = null;
     document.getElementById('otp-screen').style.display = 'none';
-    showToast('Account verified! Welcome, ' + PENDING_OTP?.profile?.fname || '' + '!');
+    showToast('Account verified! Welcome, ' + fname + '! 🎉');
   } catch (err) {
     errEl.textContent = 'Account creation failed: ' + err.message;
   }
@@ -307,15 +299,11 @@ function switchTab(tab) {
   const login = document.getElementById('login-form');
   const reg   = document.getElementById('register-form');
   if (tab === 'login') {
-    tabs[0].classList.add('active');
-    tabs[1].classList.remove('active');
-    login.style.display = 'block';
-    reg.style.display   = 'none';
+    tabs[0].classList.add('active');    tabs[1].classList.remove('active');
+    login.style.display = 'block';      reg.style.display = 'none';
   } else {
-    tabs[0].classList.remove('active');
-    tabs[1].classList.add('active');
-    login.style.display = 'none';
-    reg.style.display   = 'block';
+    tabs[0].classList.remove('active'); tabs[1].classList.add('active');
+    login.style.display = 'none';       reg.style.display = 'block';
   }
 }
 
@@ -333,39 +321,31 @@ async function doLogin() {
 }
 
 async function doRegister() {
-  const fname    = document.getElementById('reg-fname').value.trim();
-  const lname    = document.getElementById('reg-lname').value.trim();
-  const email    = document.getElementById('reg-email').value.trim();
-  const pass     = document.getElementById('reg-pass').value;
-  const confirm  = document.getElementById('reg-pass-confirm').value;
-  const age      = document.getElementById('reg-age').value;
-  const gender   = document.getElementById('reg-gender').value;
-  const height   = document.getElementById('reg-height').value;
-  const weight   = document.getElementById('reg-weight').value;
-  const goal     = document.getElementById('reg-goal').value;
-  const termsOk  = document.getElementById('reg-terms').checked;
+  const fname   = document.getElementById('reg-fname').value.trim();
+  const lname   = document.getElementById('reg-lname').value.trim();
+  const email   = document.getElementById('reg-email').value.trim();
+  const pass    = document.getElementById('reg-pass').value;
+  const confirm = document.getElementById('reg-pass-confirm').value;
+  const age     = document.getElementById('reg-age').value;
+  const gender  = document.getElementById('reg-gender').value;
+  const height  = document.getElementById('reg-height').value;
+  const weight  = document.getElementById('reg-weight').value;
+  const goal    = document.getElementById('reg-goal').value;
+  const termsOk = document.getElementById('reg-terms').checked;
 
-  // Validation
   if (!fname || !email || !pass || !confirm || !age || !gender || !height || !weight) {
     showToast('Please fill in all fields'); return;
   }
-  if (pass.length < 6) {
-    showToast('Password must be at least 6 characters'); return;
-  }
-  if (pass !== confirm) {
-    showToast('Passwords do not match'); return;
-  }
-  if (!termsOk) {
-    showToast('Please agree to the Terms of Service to continue'); return;
-  }
+  if (pass.length < 6) { showToast('Password must be at least 6 characters'); return; }
+  if (pass !== confirm) { showToast('Passwords do not match'); return; }
+  if (!termsOk) { showToast('Please agree to the Terms of Service to continue'); return; }
 
-  // Generate OTP and store pending registration
   const code = generateOTPCode();
   PENDING_OTP = {
     code,
     email,
     password: pass,
-    expires:  Date.now() + 10 * 60 * 1000,   // 10 minutes
+    expires:  Date.now() + 10 * 60 * 1000,
     profile: {
       fname, lname, email,
       age: +age, gender, height: +height, weight: +weight, goal,
@@ -375,8 +355,15 @@ async function doRegister() {
     }
   };
 
-  await sendOTPEmail(email, code);
-  openOTP(email);
+  try {
+    showToast('Sending verification code…');
+    await sendOTPEmail(email, fname, code);
+    openOTP(email);
+  } catch (err) {
+    console.error('EmailJS error:', err);
+    showToast('Failed to send verification email. Please try again.');
+    PENDING_OTP = null;
+  }
 }
 
 async function doLogout() {
@@ -407,9 +394,8 @@ function showPage(p) {
   document.querySelectorAll('.nav-link').forEach(x => x.classList.remove('active'));
   document.getElementById('page-' + p).classList.add('active');
   document.querySelectorAll('.nav-link').forEach(x => {
-    if (x.getAttribute('onclick') && x.getAttribute('onclick').includes("'" + p + "'")) {
+    if (x.getAttribute('onclick') && x.getAttribute('onclick').includes("'" + p + "'"))
       x.classList.add('active');
-    }
   });
   if (p === 'dashboard')       updateDashboard();
   if (p === 'recommendations') { loadGoalBars(); generateWeeklyInsights(); renderNutritionTips(); }
@@ -459,22 +445,16 @@ function updateDashboard() {
   document.getElementById('sp-healthy').style.width = healthyRatio + '%';
 
   const streak = calcStreak();
-  document.getElementById('s-streak').textContent   = streak;
-  document.getElementById('sp-streak').style.width  = Math.min(100, streak * 14) + '%';
+  document.getElementById('s-streak').textContent  = streak;
+  document.getElementById('sp-streak').style.width = Math.min(100, streak * 14) + '%';
 
   const recent = document.getElementById('dash-recent');
   if (todayLogs.length === 0) {
-    recent.innerHTML = `
-      <div class="empty-state" style="grid-column:1/-1">
-        <div class="empty-icon">🥦</div>
-        <div>No meals logged today</div>
-      </div>`;
+    recent.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🥦</div><div>No meals logged today</div></div>`;
   } else {
     recent.innerHTML = todayLogs.slice(-6).reverse().map(f => `
       <div class="food-chip">
-        <div class="food-dot" style="background:${
-          f.rating === 'healthy' ? '#52B788' : f.rating === 'unhealthy' ? '#E63946' : '#F9C74F'
-        }"></div>
+        <div class="food-dot" style="background:${f.rating==='healthy'?'#52B788':f.rating==='unhealthy'?'#E63946':'#F9C74F'}"></div>
         <div>
           <div class="food-chip-name">${f.name}</div>
           <div class="food-chip-cal">${f.calories} kcal · ${f.meal}</div>
@@ -483,8 +463,7 @@ function updateDashboard() {
   }
 
   const tips  = generateTips(todayLogs, totalCals, target, +bmi);
-  const recos = document.getElementById('dash-recos');
-  recos.innerHTML = tips.map(t => `
+  document.getElementById('dash-recos').innerHTML = tips.map(t => `
     <div class="reco-card">
       <div class="reco-icon">${t.icon}</div>
       <div class="reco-text"><strong>${t.title}</strong>${t.msg}</div>
@@ -641,9 +620,9 @@ function loadGoalBars() {
     ? Math.round((todayLogs.filter(f => f.rating === 'healthy').length / todayLogs.length) * 100) : 0;
 
   const bars = [
-    { label: 'Calories',      val: Math.min(100, Math.round(totalCals / target * 100)), detail: totalCals + ' / ' + target + ' kcal',       color: 'var(--green)' },
-    { label: 'Healthy Foods', val: healthyPct,                                           detail: healthyPct + '% of logged items',            color: '#52B788'      },
-    { label: 'Meals Logged',  val: Math.min(100, Math.round(todayLogs.length / 4 * 100)), detail: todayLogs.length + ' of 4 recommended',    color: 'var(--blue)'  },
+    { label: 'Calories',      val: Math.min(100, Math.round(totalCals / target * 100)), detail: totalCals + ' / ' + target + ' kcal',         color: 'var(--green)' },
+    { label: 'Healthy Foods', val: healthyPct,                                           detail: healthyPct + '% of logged items',              color: '#52B788'      },
+    { label: 'Meals Logged',  val: Math.min(100, Math.round(todayLogs.length / 4 * 100)), detail: todayLogs.length + ' of 4 recommended',      color: 'var(--blue)'  },
   ];
 
   document.getElementById('goal-bars').innerHTML = bars.map(b => `
@@ -686,36 +665,36 @@ async function generateWeeklyInsights() {
 }
 
 // =============================================================================
-// NUTRITION TIPS (goal-based static tips)
+// NUTRITION TIPS
 // =============================================================================
 
 const TIPS_DATA = {
   lose: [
-    { icon: '🥦', bg: '#D8F3DC', color: '#1B6B3A', title: 'Create a sustainable calorie deficit', desc: 'Aim for 300–500 kcal below your TDEE daily. Drastic cuts slow your metabolism and cause muscle loss — gradual reduction preserves lean mass while burning fat.', tag: 'Weight Loss', tagBg: '#D8F3DC', tagColor: '#1B6B3A' },
-    { icon: '🍗', bg: '#FFF3E0', color: '#E65100', title: 'High protein keeps hunger at bay', desc: 'Protein has the highest satiety value of all macronutrients. Target 1.2–1.6 g per kg of body weight daily using chicken breast, fish, eggs, or legumes.', tag: 'Macronutrients', tagBg: '#FFF3E0', tagColor: '#E65100' },
-    { icon: '🌾', bg: '#F3E5F5', color: '#6A1B9A', title: 'Swap refined carbs for whole grains', desc: 'Brown rice, oats, and quinoa digest slower, keeping blood sugar stable and hunger controlled for hours — unlike white bread or sugary cereals.', tag: 'Carbohydrates', tagBg: '#F3E5F5', tagColor: '#6A1B9A' },
-    { icon: '💧', bg: '#E3F2FD', color: '#1565C0', title: 'Drink water before every meal', desc: 'Studies show drinking 500 ml of water 30 minutes before meals reduces calorie intake by up to 13%. It also prevents mistaking thirst for hunger.', tag: 'Hydration', tagBg: '#E3F2FD', tagColor: '#1565C0' },
+    { icon: '🥦', bg: '#D8F3DC', title: 'Create a sustainable calorie deficit', desc: 'Aim for 300–500 kcal below your TDEE daily. Drastic cuts slow your metabolism and cause muscle loss — gradual reduction preserves lean mass while burning fat.', tag: 'Weight Loss', tagBg: '#D8F3DC', tagColor: '#1B6B3A' },
+    { icon: '🍗', bg: '#FFF3E0', title: 'High protein keeps hunger at bay', desc: 'Protein has the highest satiety value of all macronutrients. Target 1.2–1.6 g per kg of body weight daily using chicken breast, fish, eggs, or legumes.', tag: 'Macronutrients', tagBg: '#FFF3E0', tagColor: '#E65100' },
+    { icon: '🌾', bg: '#F3E5F5', title: 'Swap refined carbs for whole grains', desc: 'Brown rice, oats, and quinoa digest slower, keeping blood sugar stable and hunger controlled for hours — unlike white bread or sugary cereals.', tag: 'Carbohydrates', tagBg: '#F3E5F5', tagColor: '#6A1B9A' },
+    { icon: '💧', bg: '#E3F2FD', title: 'Drink water before every meal', desc: 'Studies show drinking 500 ml of water 30 minutes before meals reduces calorie intake by up to 13%. It also prevents mistaking thirst for hunger.', tag: 'Hydration', tagBg: '#E3F2FD', tagColor: '#1565C0' },
     { didYouKnow: true, fact: 'Eating slowly and mindfully can reduce your total calorie intake by up to 20%. It takes about 20 minutes for your brain to register fullness — so pause between bites.' }
   ],
   maintain: [
-    { icon: '⚖️', bg: '#E8F5E9', color: '#2E7D32', title: 'Match energy in with energy out', desc: 'Maintenance is about balance, not perfection. Track your calories a few days per week to stay aware of your intake without obsessing over every meal.', tag: 'Energy Balance', tagBg: '#E8F5E9', tagColor: '#2E7D32' },
-    { icon: '🥗', bg: '#D8F3DC', color: '#1B6B3A', title: 'Eat a wide variety of whole foods', desc: 'A diverse diet ensures you get all essential vitamins and minerals. Aim to eat at least 30 different plant foods per week — vegetables, fruits, grains, legumes, nuts.', tag: 'Food Variety', tagBg: '#D8F3DC', tagColor: '#1B6B3A' },
-    { icon: '🕗', bg: '#FFFDE7', color: '#F57F17', title: 'Keep consistent meal timing', desc: 'Eating at regular intervals helps regulate hunger hormones (ghrelin and leptin), preventing the urge to overeat at any single sitting.', tag: 'Meal Timing', tagBg: '#FFFDE7', tagColor: '#F57F17' },
-    { icon: '🧂', bg: '#FCE4EC', color: '#880E4F', title: 'Limit ultra-processed food intake', desc: 'Ultra-processed foods are engineered to override your fullness signals. Keeping them below 20% of your diet reduces the risk of unintentional weight gain.', tag: 'Food Quality', tagBg: '#FCE4EC', tagColor: '#880E4F' },
+    { icon: '⚖️', bg: '#E8F5E9', title: 'Match energy in with energy out', desc: 'Maintenance is about balance, not perfection. Track your calories a few days per week to stay aware of your intake without obsessing over every meal.', tag: 'Energy Balance', tagBg: '#E8F5E9', tagColor: '#2E7D32' },
+    { icon: '🥗', bg: '#D8F3DC', title: 'Eat a wide variety of whole foods', desc: 'A diverse diet ensures you get all essential vitamins and minerals. Aim to eat at least 30 different plant foods per week — vegetables, fruits, grains, legumes, nuts.', tag: 'Food Variety', tagBg: '#D8F3DC', tagColor: '#1B6B3A' },
+    { icon: '🕗', bg: '#FFFDE7', title: 'Keep consistent meal timing', desc: 'Eating at regular intervals helps regulate hunger hormones (ghrelin and leptin), preventing the urge to overeat at any single sitting.', tag: 'Meal Timing', tagBg: '#FFFDE7', tagColor: '#F57F17' },
+    { icon: '🧂', bg: '#FCE4EC', title: 'Limit ultra-processed food intake', desc: 'Ultra-processed foods are engineered to override your fullness signals. Keeping them below 20% of your diet reduces the risk of unintentional weight gain.', tag: 'Food Quality', tagBg: '#FCE4EC', tagColor: '#880E4F' },
     { didYouKnow: true, fact: 'Research shows people who weigh themselves regularly (once or twice a week) are significantly better at maintaining their weight long-term than those who avoid the scale.' }
   ],
   gain: [
-    { icon: '🍚', bg: '#FFF3E0', color: '#E65100', title: 'Eat in a controlled calorie surplus', desc: 'Target 250–500 kcal above your TDEE daily. A slow bulk (0.25–0.5 kg/week) minimizes fat gain while maximizing lean muscle growth over time.', tag: 'Muscle Gain', tagBg: '#FFF3E0', tagColor: '#E65100' },
-    { icon: '🥩', bg: '#D8F3DC', color: '#1B6B3A', title: 'Prioritize protein around workouts', desc: 'Consume 25–40 g of high-quality protein within 2 hours of training. This maximizes muscle protein synthesis — the key driver of muscle hypertrophy.', tag: 'Performance', tagBg: '#D8F3DC', tagColor: '#1B6B3A' },
-    { icon: '🥜', bg: '#F3E5F5', color: '#6A1B9A', title: 'Add calorie-dense healthy foods', desc: 'Nuts, nut butters, avocado, olive oil, and whole milk are calorie-dense without excessive bulk — ideal for hitting your calorie targets without feeling overly full.', tag: 'Calorie Dense', tagBg: '#F3E5F5', tagColor: '#6A1B9A' },
-    { icon: '😴', bg: '#E3F2FD', color: '#1565C0', title: 'Sleep is when muscles are built', desc: 'Most muscle repair and growth happens during deep sleep. Aim for 7–9 hours per night. Poor sleep elevates cortisol, a hormone that actively breaks down muscle tissue.', tag: 'Recovery', tagBg: '#E3F2FD', tagColor: '#1565C0' },
+    { icon: '🍚', bg: '#FFF3E0', title: 'Eat in a controlled calorie surplus', desc: 'Target 250–500 kcal above your TDEE daily. A slow bulk (0.25–0.5 kg/week) minimizes fat gain while maximizing lean muscle growth over time.', tag: 'Muscle Gain', tagBg: '#FFF3E0', tagColor: '#E65100' },
+    { icon: '🥩', bg: '#D8F3DC', title: 'Prioritize protein around workouts', desc: 'Consume 25–40 g of high-quality protein within 2 hours of training. This maximizes muscle protein synthesis — the key driver of muscle hypertrophy.', tag: 'Performance', tagBg: '#D8F3DC', tagColor: '#1B6B3A' },
+    { icon: '🥜', bg: '#F3E5F5', title: 'Add calorie-dense healthy foods', desc: 'Nuts, nut butters, avocado, olive oil, and whole milk are calorie-dense without excessive bulk — ideal for hitting your calorie targets without feeling overly full.', tag: 'Calorie Dense', tagBg: '#F3E5F5', tagColor: '#6A1B9A' },
+    { icon: '😴', bg: '#E3F2FD', title: 'Sleep is when muscles are built', desc: 'Most muscle repair and growth happens during deep sleep. Aim for 7–9 hours per night. Poor sleep elevates cortisol, a hormone that actively breaks down muscle tissue.', tag: 'Recovery', tagBg: '#E3F2FD', tagColor: '#1565C0' },
     { didYouKnow: true, fact: 'Creatine monohydrate is the most researched sports supplement in history. Studies consistently show it increases strength and lean mass gains by 5–15% when combined with resistance training.' }
   ],
   healthy: [
-    { icon: '🥦', bg: '#D8F3DC', color: '#1B6B3A', title: 'Fill half your plate with vegetables', desc: 'Non-starchy vegetables are low in calories and rich in fiber, vitamins, and antioxidants. Aim for 5 servings per day across a range of colors for maximum micronutrient coverage.', tag: 'General Health', tagBg: '#D8F3DC', tagColor: '#1B6B3A' },
-    { icon: '💧', bg: '#E3F2FD', color: '#1565C0', title: 'Stay hydrated throughout the day', desc: 'Drinking 8–10 glasses of water daily supports metabolism, reduces false hunger signals, aids digestion, and improves cognitive performance throughout the day.', tag: 'Hydration', tagBg: '#E3F2FD', tagColor: '#1565C0' },
-    { icon: '🌾', bg: '#F3E5F5', color: '#6A1B9A', title: 'Choose whole grains over refined carbs', desc: 'Whole grains like brown rice, oats, and quinoa provide sustained energy and a steady blood sugar level, reducing the risk of type 2 diabetes and cardiovascular disease.', tag: 'Carbohydrates', tagBg: '#F3E5F5', tagColor: '#6A1B9A' },
-    { icon: '🧂', bg: '#FCE4EC', color: '#880E4F', title: 'Watch your sodium intake', desc: 'High sodium contributes to water retention and hypertension. Keep intake below 2,300 mg/day. Season meals with herbs, spices, lemon juice, or garlic instead of salt.', tag: 'Minerals', tagBg: '#FCE4EC', tagColor: '#880E4F' },
+    { icon: '🥦', bg: '#D8F3DC', title: 'Fill half your plate with vegetables', desc: 'Non-starchy vegetables are low in calories and rich in fiber, vitamins, and antioxidants. Aim for 5 servings per day across a range of colors for maximum micronutrient coverage.', tag: 'General Health', tagBg: '#D8F3DC', tagColor: '#1B6B3A' },
+    { icon: '💧', bg: '#E3F2FD', title: 'Stay hydrated throughout the day', desc: 'Drinking 8–10 glasses of water daily supports metabolism, reduces false hunger signals, aids digestion, and improves cognitive performance throughout the day.', tag: 'Hydration', tagBg: '#E3F2FD', tagColor: '#1565C0' },
+    { icon: '🌾', bg: '#F3E5F5', title: 'Choose whole grains over refined carbs', desc: 'Whole grains like brown rice, oats, and quinoa provide sustained energy and a steady blood sugar level, reducing the risk of type 2 diabetes and cardiovascular disease.', tag: 'Carbohydrates', tagBg: '#F3E5F5', tagColor: '#6A1B9A' },
+    { icon: '🧂', bg: '#FCE4EC', title: 'Watch your sodium intake', desc: 'High sodium contributes to water retention and hypertension. Keep intake below 2,300 mg/day. Season meals with herbs, spices, lemon juice, or garlic instead of salt.', tag: 'Minerals', tagBg: '#FCE4EC', tagColor: '#880E4F' },
     { didYouKnow: true, fact: 'The Mediterranean diet — rich in vegetables, fish, olive oil, and whole grains — is consistently ranked as one of the healthiest eating patterns in the world by nutritional scientists.' }
   ]
 };
@@ -727,12 +706,7 @@ function renderNutritionTips() {
   const panel = document.getElementById('nutrition-tips-panel');
   const badge = document.getElementById('tips-goal-badge');
 
-  const goalLabels = {
-    lose:     '🎯 Goal: Lose Weight',
-    maintain: '🎯 Goal: Maintain Weight',
-    gain:     '🎯 Goal: Gain Muscle',
-    healthy:  '🎯 Goal: Eat Healthier'
-  };
+  const goalLabels = { lose: '🎯 Goal: Lose Weight', maintain: '🎯 Goal: Maintain Weight', gain: '🎯 Goal: Gain Muscle', healthy: '🎯 Goal: Eat Healthier' };
   badge.textContent = goalLabels[goal] || '🎯 Your Goal';
 
   panel.querySelectorAll('.tip-card, .did-you-know').forEach(el => el.remove());
@@ -786,7 +760,6 @@ async function saveProfile() {
     || calcCalTarget(USER.age, USER.gender, USER.height, USER.weight, USER.goal);
 
   await saveUserProfile(auth.currentUser.uid, USER);
-
   const init = getInitials(USER);
   document.getElementById('nav-avatar').textContent  = init;
   document.getElementById('prof-avatar').textContent = init;
