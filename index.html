@@ -6,6 +6,10 @@
   <title>SmartBite — Your Nutrition Companion</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+
+  <!-- EmailJS SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+
   <style>
     /* ---- OTP Screen ---- */
     #otp-screen {
@@ -28,9 +32,7 @@
     .otp-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
     .otp-title { font-size: 1.25rem; font-weight: 700; color: #111; margin-bottom: 0.25rem; }
     .otp-sub { font-size: 0.85rem; color: #666; margin-bottom: 1.5rem; line-height: 1.5; }
-    .otp-inputs {
-      display: flex; gap: 10px; justify-content: center; margin-bottom: 1.25rem;
-    }
+    .otp-inputs { display: flex; gap: 10px; justify-content: center; margin-bottom: 1.25rem; }
     .otp-inputs input {
       width: 46px; height: 54px;
       border: 1.5px solid #d1d5db;
@@ -76,10 +78,7 @@
       justify-content: space-between;
     }
     .terms-header h3 { font-size: 1rem; font-weight: 700; color: #111; margin: 0; }
-    .terms-close {
-      background: none; border: none; cursor: pointer;
-      font-size: 1.2rem; color: #888; line-height: 1;
-    }
+    .terms-close { background: none; border: none; cursor: pointer; font-size: 1.2rem; color: #888; line-height: 1; }
     .terms-body {
       padding: 1.25rem 1.5rem;
       overflow-y: auto;
@@ -90,36 +89,19 @@
     }
     .terms-body h4 { font-size: 0.88rem; font-weight: 700; color: #111; margin: 1rem 0 0.3rem; }
     .terms-body p  { margin: 0 0 0.5rem; }
-    .terms-footer {
-      padding: 1rem 1.5rem;
-      border-top: 1px solid #f0f0f0;
-      text-align: center;
-    }
+    .terms-footer { padding: 1rem 1.5rem; border-top: 1px solid #f0f0f0; text-align: center; }
 
     /* ---- Checkbox row ---- */
     .checkbox-row {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
+      display: flex; align-items: flex-start; gap: 10px;
       margin: 0.75rem 0 0.25rem;
-      font-size: 0.82rem;
-      color: #444;
-      line-height: 1.5;
+      font-size: 0.82rem; color: #444; line-height: 1.5;
     }
     .checkbox-row input[type="checkbox"] {
-      margin-top: 2px;
-      width: 16px;
-      height: 16px;
-      accent-color: #52B788;
-      flex-shrink: 0;
-      cursor: pointer;
+      margin-top: 2px; width: 16px; height: 16px;
+      accent-color: #52B788; flex-shrink: 0; cursor: pointer;
     }
-    .checkbox-row a {
-      color: #52B788;
-      font-weight: 500;
-      cursor: pointer;
-      text-decoration: none;
-    }
+    .checkbox-row a { color: #52B788; font-weight: 500; cursor: pointer; text-decoration: none; }
     .checkbox-row a:hover { text-decoration: underline; }
 
     /* ---- Password strength ---- */
@@ -150,19 +132,13 @@
     .tip-body { flex: 1; }
     .tip-title { font-size: 14px; font-weight: 600; color: #111; margin: 0 0 4px; }
     .tip-desc { font-size: 13px; color: #555; line-height: 1.6; margin: 0; }
-    .tip-tag {
-      display: inline-block; font-size: 11px; font-weight: 500;
-      padding: 2px 8px; border-radius: 999px; margin-top: 6px;
-    }
+    .tip-tag { display: inline-block; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 999px; margin-top: 6px; }
     .did-you-know {
       border-left: 3px solid #4CAF50; background: #F1F8F2;
       border-radius: 0 10px 10px 0; padding: 0.9rem 1.1rem;
       font-size: 13px; color: #2e5e35; line-height: 1.6;
     }
-    .did-you-know strong {
-      display: block; font-size: 11px; letter-spacing: 0.06em;
-      text-transform: uppercase; margin-bottom: 4px; color: #4CAF50;
-    }
+    .did-you-know strong { display: block; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 4px; color: #4CAF50; }
   </style>
 </head>
 <body>
@@ -184,7 +160,7 @@
       <div class="otp-error" id="otp-error"></div>
       <button class="btn-primary" style="width:100%;margin-bottom:0.75rem" onclick="window.verifyOTP()">Verify & Create Account</button>
       <div class="otp-resend">Didn't receive it? <a onclick="window.resendOTP()">Resend code</a></div>
-      <div style="font-size:0.78rem;color:#aaa;margin-top:0.25rem">
+      <div style="font-size:0.78rem;color:#aaa;margin-top:0.5rem">
         <a href="#" style="color:#aaa" onclick="window.closeOTP(); return false;">← Back to registration</a>
       </div>
     </div>
@@ -199,33 +175,24 @@
       </div>
       <div class="terms-body">
         <p>Welcome to <strong>SmartBite</strong>. By creating an account, you agree to the following terms. Please read them carefully.</p>
-
         <h4>1. Acceptance of Terms</h4>
         <p>By registering and using SmartBite, you agree to be bound by these Terms of Service. If you do not agree, please do not use the application.</p>
-
         <h4>2. Use of the Service</h4>
         <p>SmartBite is a personal nutrition tracking tool intended for informational purposes only. The content provided, including calorie estimates, BMI calculations, and AI-generated nutrition tips, does not constitute medical advice.</p>
         <p>You must be at least 13 years of age to use SmartBite. You are responsible for maintaining the confidentiality of your account credentials.</p>
-
         <h4>3. Health Disclaimer</h4>
         <p>SmartBite is not a substitute for professional medical advice, diagnosis, or treatment. Always seek the guidance of a qualified healthcare provider before making significant changes to your diet or exercise routine.</p>
-
         <h4>4. Data Collection &amp; Privacy</h4>
         <p>We collect personal information you provide during registration (name, email, age, height, weight, and health goals) and food log data you enter. This data is stored securely using Firebase (Google Cloud) and is used solely to provide personalized features within the app.</p>
         <p>We do not sell, rent, or share your personal data with third parties for marketing purposes.</p>
-
         <h4>5. AI-Generated Content</h4>
         <p>SmartBite uses AI to analyze food items and generate insights. These are estimates and suggestions only. Accuracy may vary, and results should not be used as a sole basis for medical or dietary decisions.</p>
-
         <h4>6. Account Termination</h4>
         <p>You may delete your account at any time. We reserve the right to suspend or terminate accounts that violate these terms or engage in fraudulent activity.</p>
-
         <h4>7. Changes to Terms</h4>
         <p>We may update these Terms periodically. Continued use of SmartBite after changes are posted constitutes your acceptance of the new Terms.</p>
-
         <h4>8. Contact</h4>
         <p>For questions about these Terms, contact us at <strong>support@smartbite.app</strong>.</p>
-
         <p style="margin-top:1rem;color:#999;font-size:0.78rem">Last updated: May 2026</p>
       </div>
       <div class="terms-footer">
@@ -277,7 +244,6 @@
           </div>
           <div class="field"><label>Email</label><input type="email" id="reg-email" placeholder="you@example.com"></div>
 
-          <!-- Password with strength meter -->
           <div class="field">
             <label>Password</label>
             <input type="password" id="reg-pass" placeholder="min. 6 characters" oninput="window.checkPassStrength()">
@@ -285,7 +251,6 @@
             <div class="pass-hint" id="pass-hint"></div>
           </div>
 
-          <!-- Confirm Password -->
           <div class="field">
             <label>Confirm Password</label>
             <input type="password" id="reg-pass-confirm" placeholder="Re-enter your password" oninput="window.checkPassMatch()">
@@ -316,7 +281,6 @@
             </select>
           </div>
 
-          <!-- Terms of Service checkbox -->
           <div class="checkbox-row">
             <input type="checkbox" id="reg-terms">
             <label for="reg-terms">
@@ -354,7 +318,6 @@
       <div class="page active" id="page-dashboard">
         <h1 class="page-title" id="dash-greeting">Good morning!</h1>
         <p class="page-sub" id="dash-date">Today's nutrition overview</p>
-
         <div class="bmi-hero">
           <div class="bmi-hero-left">
             <div class="bmi-label">Your BMI</div>
@@ -366,12 +329,9 @@
             <div class="cal-label">Today's calories</div>
             <div class="cal-value" id="dash-cals-today">0</div>
             <div class="cal-goal" id="dash-cals-goal"></div>
-            <div class="cal-bar-track">
-              <div class="cal-bar-fill" id="dash-cal-bar"></div>
-            </div>
+            <div class="cal-bar-track"><div class="cal-bar-fill" id="dash-cal-bar"></div></div>
           </div>
         </div>
-
         <div class="stats-grid">
           <div class="stat-card">
             <div class="stat-icon" style="background:#D8F3DC">🥗</div>
@@ -392,10 +352,8 @@
             <div class="stat-prog"><div class="stat-prog-bar blue" id="sp-streak"></div></div>
           </div>
         </div>
-
         <h2 class="section-hd">Recent Food Logs</h2>
         <div class="recent-grid" id="dash-recent"></div>
-
         <h2 class="section-hd" style="margin-top:1.5rem">Smart Recommendations</h2>
         <div id="dash-recos"></div>
       </div>
@@ -404,20 +362,12 @@
       <div class="page" id="page-log">
         <h1 class="page-title">Food Log</h1>
         <p class="page-sub">Track everything you eat and get instant AI analysis</p>
-
         <div class="log-form">
           <div class="log-form-title">Log a Meal</div>
           <div class="log-row">
-            <div class="field" style="margin:0">
-              <label>Food Item</label>
-              <input type="text" id="food-name" placeholder="e.g. Grilled chicken, Fried rice...">
-            </div>
-            <div class="field" style="margin:0">
-              <label>Calories (est.)</label>
-              <input type="number" id="food-cal" placeholder="350" min="0">
-            </div>
-            <div class="field" style="margin:0">
-              <label>Meal Time</label>
+            <div class="field" style="margin:0"><label>Food Item</label><input type="text" id="food-name" placeholder="e.g. Grilled chicken, Fried rice..."></div>
+            <div class="field" style="margin:0"><label>Calories (est.)</label><input type="number" id="food-cal" placeholder="350" min="0"></div>
+            <div class="field" style="margin:0"><label>Meal Time</label>
               <select id="food-meal">
                 <option value="breakfast">Breakfast</option>
                 <option value="lunch" selected>Lunch</option>
@@ -430,13 +380,10 @@
             </div>
           </div>
           <div id="analysis-area" style="display:none;margin-top:1rem">
-            <div class="analysis-loading" id="analysis-loading">
-              <div class="spinner"></div> Analyzing with AI...
-            </div>
+            <div class="analysis-loading" id="analysis-loading"><div class="spinner"></div> Analyzing with AI...</div>
             <div class="analysis-box" id="analysis-result" style="display:none"></div>
           </div>
         </div>
-
         <h2 class="section-hd">Today's Log</h2>
         <div class="log-entries" id="log-entries">
           <div class="empty-state">
@@ -451,10 +398,7 @@
       <div class="page" id="page-recommendations">
         <h1 class="page-title">Smart Advice</h1>
         <p class="page-sub">Personalized tips based on your health goal</p>
-
         <div class="reco-page-grid">
-
-          <!-- LEFT COLUMN -->
           <div>
             <div class="settings-card" style="margin-bottom:1rem">
               <div class="settings-title">Daily Goals Progress</div>
@@ -465,15 +409,12 @@
               <div id="weekly-insights">Loading...</div>
             </div>
           </div>
-
-          <!-- RIGHT COLUMN: Nutrition Tips -->
           <div class="settings-card">
             <div class="settings-title" style="margin-bottom:0.75rem">Nutrition Tips</div>
             <div class="tips-panel" id="nutrition-tips-panel">
               <div class="goal-badge" id="tips-goal-badge">🎯 Your Goal</div>
             </div>
           </div>
-
         </div>
       </div>
 
@@ -540,7 +481,6 @@
   </div><!-- /#app-screen -->
 
   <div class="toast" id="toast"></div>
-
   <script type="module" src="app.js"></script>
 </body>
 </html>
