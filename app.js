@@ -36,7 +36,7 @@ const EMAILJS_PUBLIC_KEY  = 'koTFYwKltn5wUm99V';
 // ---- Global State ----
 let USER        = null;
 let FOOD_LOG    = [];
-let PENDING_OTP = null; // { code, email, password, profile, expires }
+let PENDING_OTP = null;
 
 // =============================================================================
 // UTILITIES
@@ -102,11 +102,11 @@ function checkPassStrength() {
   const bar  = document.getElementById('pass-bar');
   const hint = document.getElementById('pass-hint');
   let strength = 0;
-  if (pass.length >= 6)               strength++;
-  if (pass.length >= 10)              strength++;
-  if (/[A-Z]/.test(pass))            strength++;
-  if (/[0-9]/.test(pass))            strength++;
-  if (/[^A-Za-z0-9]/.test(pass))     strength++;
+  if (pass.length >= 6)            strength++;
+  if (pass.length >= 10)           strength++;
+  if (/[A-Z]/.test(pass))         strength++;
+  if (/[0-9]/.test(pass))         strength++;
+  if (/[^A-Za-z0-9]/.test(pass))  strength++;
 
   const levels = [
     { w: '0%',   bg: 'transparent', text: '' },
@@ -185,14 +185,15 @@ function otpBack(e, idx) {
 }
 
 async function sendOTPEmail(email, name, code) {
-  // Initialize EmailJS
+  // ✅ Variable names match the EmailJS template EXACTLY:
+  //    {{to_name}}  → user's first name
+  //    {{otp_code}} → the 6-digit code
+  //    To Email field in template must be set to {{to_email}}
   emailjs.init(EMAILJS_PUBLIC_KEY);
-
   await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
-    email:      email,       // matches {{email}} in template  → To Email field
-    passcode:   code,        // matches {{passcode}} in template
-    to_name:    name,
-    app_name:   'SmartBite'
+    to_email: email,   // → goes to the "To Email" field in EmailJS template
+    to_name:  name,    // → {{to_name}} in template body
+    otp_code: code,    // → {{otp_code}} in template body
   });
 }
 
@@ -215,13 +216,11 @@ async function resendOTP() {
 
 async function verifyOTP() {
   if (!PENDING_OTP) return;
-
   const entered = Array.from({length: 6}, (_, i) =>
     document.getElementById('otp-' + (i + 1)).value
   ).join('');
 
   const errEl = document.getElementById('otp-error');
-
   if (entered.length < 6) { errEl.textContent = 'Please enter all 6 digits.'; return; }
   if (Date.now() > PENDING_OTP.expires) {
     errEl.textContent = 'This code has expired. Please request a new one.'; return;
@@ -233,7 +232,6 @@ async function verifyOTP() {
     return;
   }
 
-  // OTP correct — create Firebase account
   errEl.textContent = '';
   try {
     const cred = await createUserWithEmailAndPassword(
@@ -336,9 +334,9 @@ async function doRegister() {
   if (!fname || !email || !pass || !confirm || !age || !gender || !height || !weight) {
     showToast('Please fill in all fields'); return;
   }
-  if (pass.length < 6) { showToast('Password must be at least 6 characters'); return; }
-  if (pass !== confirm) { showToast('Passwords do not match'); return; }
-  if (!termsOk) { showToast('Please agree to the Terms of Service to continue'); return; }
+  if (pass.length < 6)   { showToast('Password must be at least 6 characters'); return; }
+  if (pass !== confirm)  { showToast('Passwords do not match'); return; }
+  if (!termsOk)          { showToast('Please agree to the Terms of Service to continue'); return; }
 
   const code = generateOTPCode();
   PENDING_OTP = {
@@ -462,7 +460,7 @@ function updateDashboard() {
       </div>`).join('');
   }
 
-  const tips  = generateTips(todayLogs, totalCals, target, +bmi);
+  const tips = generateTips(todayLogs, totalCals, target, +bmi);
   document.getElementById('dash-recos').innerHTML = tips.map(t => `
     <div class="reco-card">
       <div class="reco-icon">${t.icon}</div>
@@ -620,9 +618,9 @@ function loadGoalBars() {
     ? Math.round((todayLogs.filter(f => f.rating === 'healthy').length / todayLogs.length) * 100) : 0;
 
   const bars = [
-    { label: 'Calories',      val: Math.min(100, Math.round(totalCals / target * 100)), detail: totalCals + ' / ' + target + ' kcal',         color: 'var(--green)' },
-    { label: 'Healthy Foods', val: healthyPct,                                           detail: healthyPct + '% of logged items',              color: '#52B788'      },
-    { label: 'Meals Logged',  val: Math.min(100, Math.round(todayLogs.length / 4 * 100)), detail: todayLogs.length + ' of 4 recommended',      color: 'var(--blue)'  },
+    { label: 'Calories',      val: Math.min(100, Math.round(totalCals / target * 100)), detail: totalCals + ' / ' + target + ' kcal',       color: 'var(--green)' },
+    { label: 'Healthy Foods', val: healthyPct,                                           detail: healthyPct + '% of logged items',            color: '#52B788'      },
+    { label: 'Meals Logged',  val: Math.min(100, Math.round(todayLogs.length / 4 * 100)), detail: todayLogs.length + ' of 4 recommended',    color: 'var(--blue)'  },
   ];
 
   document.getElementById('goal-bars').innerHTML = bars.map(b => `
@@ -708,7 +706,6 @@ function renderNutritionTips() {
 
   const goalLabels = { lose: '🎯 Goal: Lose Weight', maintain: '🎯 Goal: Maintain Weight', gain: '🎯 Goal: Gain Muscle', healthy: '🎯 Goal: Eat Healthier' };
   badge.textContent = goalLabels[goal] || '🎯 Your Goal';
-
   panel.querySelectorAll('.tip-card, .did-you-know').forEach(el => el.remove());
 
   tips.forEach(tip => {
