@@ -645,11 +645,95 @@ nav {
 .reco-text strong { color:var(--orange); display:block; margin-bottom:.2rem; font-size:.78rem; text-transform:uppercase; letter-spacing:.4px; }
 
 /* =============================================
-   FOOD LOG PAGE
+   FOOD LOG PAGE — PHOTO UPLOAD
    ============================================= */
 .log-form { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:1.5rem; margin-bottom:2rem; }
 .log-form-title { font-family:var(--font); font-size:1.1rem; font-weight:700; margin-bottom:1rem; color:var(--text); }
-.log-row { display:grid; grid-template-columns:2fr 1fr 1fr auto; gap:.8rem; align-items:end; }
+
+/* Photo Upload Zone */
+.photo-upload-zone {
+  border: 2px dashed var(--border);
+  border-radius: 14px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color .2s, background .2s;
+  background: var(--bg);
+  position: relative;
+  min-height: 130px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.photo-upload-zone:hover {
+  border-color: var(--green-light);
+  background: var(--green-pale);
+}
+.photo-upload-zone.has-photo {
+  border-style: solid;
+  border-color: var(--green-light);
+}
+
+.photo-upload-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  gap: .5rem;
+  text-align: center;
+}
+.photo-upload-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--green), var(--green-light));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  margin-bottom: .25rem;
+}
+.photo-upload-text {
+  font-size: .9rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.photo-upload-hint {
+  font-size: .78rem;
+  color: var(--muted);
+}
+
+.photo-preview-wrap {
+  width: 100%;
+  position: relative;
+}
+.photo-preview-wrap img {
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  display: block;
+  border-radius: 12px;
+}
+.photo-remove-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.55);
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .2s;
+  z-index: 2;
+}
+.photo-remove-btn:hover { background: var(--red); }
+
+.log-row { display:grid; grid-template-columns:2fr 1fr auto; gap:.8rem; align-items:end; }
 .btn-analyze { width:auto; padding:.72rem 1.3rem; white-space:nowrap; margin-top:0; }
 
 .analysis-loading { display:flex; align-items:center; gap:.6rem; color:var(--muted); font-size:.85rem; padding:.5rem 0; }
