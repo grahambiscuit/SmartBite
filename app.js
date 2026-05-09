@@ -37,6 +37,7 @@ const EMAILJS_PUBLIC_KEY  = 'koTFYwKltn5wUm99V';
 let USER        = null;
 let FOOD_LOG    = [];
 let PENDING_OTP = null;
+let FOOD_PHOTO_BASE64 = null;   // stores the current food photo as base64
 
 // =============================================================================
 // UTILITIES
@@ -172,17 +173,6 @@ function checkPassStrength() {
     special: /[^A-Za-z0-9]/.test(pass)
   };
 
-  // Update rule indicators
-  const setRule = (id, ok) => {
-    const el = document.getElementById('r-' + id);
-    if (!el) return;
-    el.classList.toggle('ok', ok);
-    el.innerHTML = ok
-      ? `<i data-lucide="check-circle" width="12" height="12"></i> ${el.textContent.trim().replace(/^.+?\s/, '')}`
-      : `<i data-lucide="circle" width="12" height="12"></i> ${el.textContent.trim().replace(/^.+?\s/, '')}`;
-  };
-
-  // Re-set with original text
   const ruleTexts = {
     len:     'At least 8 characters',
     upper:   'One uppercase letter (A-Z)',
@@ -272,6 +262,62 @@ function applyProfilePic(src) {
 function loadProfilePic() {
   const src = localStorage.getItem('sb-profile-pic');
   if (src) applyProfilePic(src);
+}
+
+// =============================================================================
+// FOOD PHOTO HANDLING
+// =============================================================================
+
+function handleFoodPhoto(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const src = e.target.result;
+    // Store the pure base64 (strip data URL prefix for API)
+    FOOD_PHOTO_BASE64 = src.split(',')[1];
+    showFoodPhotoPreview(src);
+  };
+  reader.readAsDataURL(file);
+}
+
+function handlePhotoDrop(event) {
+  event.preventDefault();
+  const file = event.dataTransfer.files[0];
+  if (!file || !file.type.startsWith('image/')) return;
+  const input = document.getElementById('food-photo-input');
+  // Simulate file input change
+  const dt = new DataTransfer();
+  dt.items.add(file);
+  input.files = dt.files;
+  handleFoodPhoto(input);
+}
+
+function showFoodPhotoPreview(src) {
+  const zone    = document.getElementById('photo-upload-zone');
+  const inner   = document.getElementById('photo-upload-inner');
+  const preview = document.getElementById('photo-preview-wrap');
+  const img     = document.getElementById('food-photo-preview');
+
+  img.src = src;
+  inner.style.display   = 'none';
+  preview.style.display = 'block';
+  zone.classList.add('has-photo');
+}
+
+function clearFoodPhoto(event) {
+  event.stopPropagation();
+  FOOD_PHOTO_BASE64 = null;
+  const zone    = document.getElementById('photo-upload-zone');
+  const inner   = document.getElementById('photo-upload-inner');
+  const preview = document.getElementById('photo-preview-wrap');
+  const input   = document.getElementById('food-photo-input');
+
+  inner.style.display   = '';
+  preview.style.display = 'none';
+  zone.classList.remove('has-photo');
+  input.value = '';
+  document.getElementById('food-photo-preview').src = '';
 }
 
 // =============================================================================
@@ -555,7 +601,6 @@ function updateDashboard() {
   document.getElementById('s-streak').textContent  = streak;
   document.getElementById('sp-streak').style.width = Math.min(100, streak * 14) + '%';
 
-  // Small dashboard tip
   renderDashTip();
 
   const recent = document.getElementById('dash-recent');
@@ -622,14 +667,18 @@ function generateTips(logs, cals, target, bmi) {
 }
 
 // =============================================================================
-// FOOD LOG
+// FOOD LOG  —  PHOTO-FIRST AI ANALYSIS
 // =============================================================================
 
 async function logFood() {
   const name = document.getElementById('food-name').value.trim();
-  const cal  = parseInt(document.getElementById('food-cal').value) || 0;
   const meal = document.getElementById('food-meal').value;
-  if (!name) { showToast('Please enter a food name'); return; }
+
+  // Must have either a photo or a food name
+  if (!FOOD_PHOTO_BASE64 && !name) {
+    showToast('Please take a photo or enter a food name');
+    return;
+  }
 
   const area = document.getElementById('analysis-area');
   area.style.display = 'block';
@@ -639,55 +688,102 @@ async function logFood() {
   let rating = 'moderate', resultHTML = '';
 
   try {
+    // Build message content — image takes priority when available
+    let messageContent;
+
+    if (FOOD_PHOTO_BASE64) {
+      // Detect media type from the data URL prefix stored in the preview
+      const previewSrc = document.getElementById('food-photo-preview').src;
+      const mimeMatch  = previewSrc.match(/^data:(image\/[a-z+]+);base64,/);
+      const mediaType  = (mimeMatch && mimeMatch[1]) || 'image/jpeg';
+
+      messageContent = [
+        {
+          type: 'image',
+          source: {
+            type:       'base64',
+            media_type: mediaType,
+            data:       FOOD_PHOTO_BASE64
+          }
+        },
+        {
+          type: 'text',
+          text: `Analyze this food photo${name ? ` (user says it is: "${name}")` : ''}. User goal: ${USER?.goal || 'healthy eating'}.`
+        }
+      ];
+    } else {
+      messageContent = [
+        {
+          type: 'text',
+          text: `Food: ${name}. Goal: ${USER?.goal || 'healthy eating'}.`
+        }
+      ];
+    }
+
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model:      'claude-sonnet-4-20250514',
         max_tokens: 1000,
-        system: `You are a nutrition expert. Analyze the food item and return ONLY valid JSON: {"rating":"healthy"|"moderate"|"unhealthy","calories_estimate":number,"analysis":"2-sentence analysis","nutrients":["n1","n2","n3"],"tip":"one short actionable tip"}`,
-        messages: [{ role:'user', content:`Food: ${name}. Logged: ${cal||'unknown'} cal. Goal: ${USER?.goal||'healthy eating'}.` }]
+        system:     `You are a nutrition expert. Analyze the food item (from photo or text) and return ONLY valid JSON with no extra text: {"food_name":"identified food name","rating":"healthy"|"moderate"|"unhealthy","calories_estimate":number,"analysis":"2-sentence analysis","nutrients":["n1","n2","n3"],"tip":"one short actionable tip"}`,
+        messages:   [{ role: 'user', content: messageContent }]
       })
     });
+
     const data       = await res.json();
-    const text       = data.content.map(i => i.text||'').join('');
-    const parsed     = JSON.parse(text.replace(/```json|```/g,'').trim());
+    const text       = data.content.map(i => i.text || '').join('');
+    const parsed     = JSON.parse(text.replace(/```json|```/g, '').trim());
+
     rating           = parsed.rating || 'moderate';
-    const finalCal   = cal || parsed.calories_estimate || 200;
-    const badgeClass = rating==='healthy'?'badge-healthy':rating==='unhealthy'?'badge-unhealthy':'badge-moderate';
+    const finalCal   = parsed.calories_estimate || 200;
+    const foodName   = parsed.food_name || name || 'Unknown food';
+    const badgeClass = rating === 'healthy' ? 'badge-healthy' : rating === 'unhealthy' ? 'badge-unhealthy' : 'badge-moderate';
 
     resultHTML = `
-      <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.7rem">
-        <span class="entry-badge ${badgeClass}" style="font-size:.8rem;padding:.3rem .8rem">${rating.charAt(0).toUpperCase()+rating.slice(1)}</span>
-        <span style="font-size:.82rem;color:var(--muted)">~${finalCal} kcal</span>
+      <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.7rem;flex-wrap:wrap">
+        <span style="font-weight:700;font-size:.95rem;color:var(--text)">${foodName}</span>
+        <span class="entry-badge ${badgeClass}" style="font-size:.8rem;padding:.3rem .8rem">${rating.charAt(0).toUpperCase() + rating.slice(1)}</span>
+        <span style="font-size:.82rem;color:var(--green);font-weight:700">~${finalCal} kcal</span>
+        ${FOOD_PHOTO_BASE64 ? '<span style="font-size:.75rem;color:var(--muted);background:var(--green-pale);padding:2px 8px;border-radius:999px">📷 Photo analyzed</span>' : ''}
       </div>
       <div style="margin-bottom:.6rem">${parsed.analysis}</div>
       <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.6rem">
-        ${(parsed.nutrients||[]).map(n=>`<span style="background:var(--green-pale);color:var(--green);font-size:.75rem;padding:.22rem .65rem;border-radius:20px">${n}</span>`).join('')}
+        ${(parsed.nutrients || []).map(n => `<span style="background:var(--green-pale);color:var(--green);font-size:.75rem;padding:.22rem .65rem;border-radius:20px">${n}</span>`).join('')}
       </div>
       <div style="font-size:.82rem;color:var(--orange);font-weight:600">💡 ${parsed.tip}</div>`;
 
-    const entry = { name, calories: finalCal, meal, rating, date: new Date().toISOString(), analysis: parsed.analysis };
+    const entry = {
+      name:     foodName,
+      calories: finalCal,
+      meal,
+      rating,
+      date:     new Date().toISOString(),
+      analysis: parsed.analysis,
+      hasPhoto: !!FOOD_PHOTO_BASE64
+    };
     const firestoreId = await addFoodEntry(entry);
     FOOD_LOG.push({ firestoreId, ...entry });
 
   } catch (err) {
     console.error('Analysis error:', err);
-    const finalCal = cal || 200;
-    resultHTML = `<div style="color:var(--muted);font-size:.85rem">AI analysis unavailable. Food logged with ${finalCal} calories.</div>`;
-    const entry = { name, calories: finalCal, meal, rating:'moderate', date: new Date().toISOString(), analysis:'' };
+    const fallbackName = name || 'Unknown food';
+    resultHTML = `<div style="color:var(--muted);font-size:.85rem">AI analysis unavailable. Food logged as "${fallbackName}" with estimated 200 calories.</div>`;
+    const entry = { name: fallbackName, calories: 200, meal, rating: 'moderate', date: new Date().toISOString(), analysis: '', hasPhoto: !!FOOD_PHOTO_BASE64 };
     const firestoreId = await addFoodEntry(entry);
     FOOD_LOG.push({ firestoreId, ...entry });
   }
 
+  // Reset form
   renderLogEntries();
   updateDashboard();
   document.getElementById('food-name').value = '';
-  document.getElementById('food-cal').value  = '';
+  clearFoodPhoto({ stopPropagation: () => {} });
   showToast('Food logged successfully!');
   document.getElementById('analysis-loading').style.display = 'none';
   document.getElementById('analysis-result').style.display  = 'block';
   document.getElementById('analysis-result').innerHTML      = resultHTML;
+  if (window.lucide) lucide.createIcons();
 }
 
 function renderLogEntries() {
@@ -696,15 +792,15 @@ function renderLogEntries() {
   const container = document.getElementById('log-entries');
 
   if (todayLogs.length === 0) {
-    container.innerHTML = `<div class="empty-state"><div>No foods logged yet today</div><div class="empty-hint">Add your first meal above</div></div>`;
+    container.innerHTML = `<div class="empty-state"><div>No foods logged yet today</div><div class="empty-hint">Take a photo or type your first meal above</div></div>`;
     return;
   }
   container.innerHTML = [...todayLogs].reverse().map(f => {
-    const bc = f.rating==='healthy'?'badge-healthy':f.rating==='unhealthy'?'badge-unhealthy':'badge-moderate';
+    const bc = f.rating === 'healthy' ? 'badge-healthy' : f.rating === 'unhealthy' ? 'badge-unhealthy' : 'badge-moderate';
     return `
       <div class="log-entry">
         <span class="entry-meal meal-tag-${f.meal}">${f.meal}</span>
-        <span class="entry-name">${f.name}</span>
+        <span class="entry-name">${f.name}${f.hasPhoto ? ' 📷' : ''}</span>
         <span class="entry-cal">${f.calories} kcal</span>
         <span class="entry-badge ${bc}">${f.rating}</span>
         <button onclick="window.deleteEntry('${f.firestoreId}')" style="background:none;border:none;cursor:pointer;color:var(--muted);padding:.2rem .4rem;border-radius:6px" title="Delete">✕</button>
@@ -737,14 +833,14 @@ async function generateWeeklyInsights() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model:      'claude-sonnet-4-20250514',
         max_tokens: 1000,
-        system: 'You are a friendly nutrition coach. Give 3 short, practical, personalized weekly insights. Use bullet points with emoji. Under 120 words total.',
-        messages: [{ role:'user', content:`User: ${USER.fname}, goal: ${USER.goal}, BMI: ${calcBMI(USER.height,USER.weight)}, recent foods: ${summary}` }]
+        system:     'You are a friendly nutrition coach. Give 3 short, practical, personalized weekly insights. Use bullet points with emoji. Under 120 words total.',
+        messages:   [{ role: 'user', content: `User: ${USER.fname}, goal: ${USER.goal}, BMI: ${calcBMI(USER.height, USER.weight)}, recent foods: ${summary}` }]
       })
     });
     const data = await res.json();
-    el.innerHTML = data.content.map(i=>i.text||'').join('').replace(/\n/g,'<br>');
+    el.innerHTML = data.content.map(i => i.text || '').join('').replace(/\n/g, '<br>');
   } catch {
     el.textContent = 'Log more meals to see your weekly insights!';
   }
@@ -762,24 +858,24 @@ async function generateAIAdvice() {
   const cat     = getBMICat(+bmi);
   const today   = new Date().toDateString();
   const logs    = FOOD_LOG.filter(f => new Date(f.date).toDateString() === today);
-  const summary = logs.map(f => f.name+'('+f.rating+')').join(', ') || 'No food logged today';
-  const recent  = FOOD_LOG.slice(-10).map(f=>f.name+'('+f.rating+')').join(', ') || 'No recent history';
+  const summary = logs.map(f => f.name + '(' + f.rating + ')').join(', ') || 'No food logged today';
+  const recent  = FOOD_LOG.slice(-10).map(f => f.name + '(' + f.rating + ')').join(', ') || 'No recent history';
 
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model:      'claude-sonnet-4-20250514',
         max_tokens: 1500,
-        system: `You are SmartBite AI, a professional nutrition advisor. Give a detailed, warm, personalized nutrition advice. Structure your response with: 1) A personal greeting, 2) Assessment of current status, 3) Three specific actionable recommendations for their goal, 4) One motivational closing sentence. Use plain text with line breaks. Be specific, evidence-based, and encouraging. Around 200 words.`,
-        messages: [{ role:'user', content:`Name: ${USER.fname}. Goal: ${USER.goal}. BMI: ${bmi} (${cat}). Age: ${USER.age}. Gender: ${USER.gender}. Height: ${USER.height}cm. Weight: ${USER.weight}kg. Today's food: ${summary}. Recent history: ${recent}. Daily calorie target: ${USER.cals} kcal.` }]
+        system:     `You are SmartBite AI, a professional nutrition advisor. Give a detailed, warm, personalized nutrition advice. Structure your response with: 1) A personal greeting, 2) Assessment of current status, 3) Three specific actionable recommendations for their goal, 4) One motivational closing sentence. Use plain text with line breaks. Be specific, evidence-based, and encouraging. Around 200 words.`,
+        messages:   [{ role: 'user', content: `Name: ${USER.fname}. Goal: ${USER.goal}. BMI: ${bmi} (${cat}). Age: ${USER.age}. Gender: ${USER.gender}. Height: ${USER.height}cm. Weight: ${USER.weight}kg. Today's food: ${summary}. Recent history: ${recent}. Daily calorie target: ${USER.cals} kcal.` }]
       })
     });
     const data = await res.json();
-    const text = data.content.map(i=>i.text||'').join('');
+    const text = data.content.map(i => i.text || '').join('');
     result.style.display = 'block';
-    result.innerHTML = text.replace(/\n/g,'<br>');
+    result.innerHTML = text.replace(/\n/g, '<br>');
   } catch {
     result.style.display = 'block';
     result.textContent = 'Unable to generate advice. Please try again.';
@@ -913,29 +1009,32 @@ initTheme();
 // =============================================================================
 // EXPOSE TO GLOBAL SCOPE
 // =============================================================================
-window.switchTab          = switchTab;
-window.doLogin            = doLogin;
-window.doRegister         = doRegister;
-window.doLogout           = doLogout;
-window.showPage           = showPage;
-window.logFood            = logFood;
-window.deleteEntry        = deleteEntry;
-window.saveProfile        = saveProfile;
+window.switchTab              = switchTab;
+window.doLogin                = doLogin;
+window.doRegister             = doRegister;
+window.doLogout               = doLogout;
+window.showPage               = showPage;
+window.logFood                = logFood;
+window.deleteEntry            = deleteEntry;
+window.saveProfile            = saveProfile;
 window.generateWeeklyInsights = generateWeeklyInsights;
-window.generateAIAdvice   = generateAIAdvice;
-window.checkPassStrength  = checkPassStrength;
-window.checkPassMatch     = checkPassMatch;
-window.checkGmail         = checkGmail;
-window.togglePass         = togglePass;
-window.toggleTheme        = toggleTheme;
-window.openBurger         = openBurger;
-window.closeBurger        = closeBurger;
-window.openTerms          = openTerms;
-window.closeTerms         = closeTerms;
-window.acceptTerms        = acceptTerms;
-window.otpMove            = otpMove;
-window.otpBack            = otpBack;
-window.verifyOTP          = verifyOTP;
-window.resendOTP          = resendOTP;
-window.closeOTP           = closeOTP;
-window.handleProfilePic   = handleProfilePic;
+window.generateAIAdvice       = generateAIAdvice;
+window.checkPassStrength      = checkPassStrength;
+window.checkPassMatch         = checkPassMatch;
+window.checkGmail             = checkGmail;
+window.togglePass             = togglePass;
+window.toggleTheme            = toggleTheme;
+window.openBurger             = openBurger;
+window.closeBurger            = closeBurger;
+window.openTerms              = openTerms;
+window.closeTerms             = closeTerms;
+window.acceptTerms            = acceptTerms;
+window.otpMove                = otpMove;
+window.otpBack                = otpBack;
+window.verifyOTP              = verifyOTP;
+window.resendOTP              = resendOTP;
+window.closeOTP               = closeOTP;
+window.handleProfilePic       = handleProfilePic;
+window.handleFoodPhoto        = handleFoodPhoto;
+window.handlePhotoDrop        = handlePhotoDrop;
+window.clearFoodPhoto         = clearFoodPhoto;
