@@ -2,14 +2,14 @@
    SMARTBITE — app.js  (Firebase Edition)
    ============================================= */
 
-import { initializeApp }                          from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAnalytics }                           from "https://www.gstatic.com/firebasejs/10.12.0/firebase-analytics.js";
+import { initializeApp }                         from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAnalytics }                          from "https://www.gstatic.com/firebasejs/10.12.0/firebase-analytics.js";
 import { getAuth, createUserWithEmailAndPassword,
          signInWithEmailAndPassword, signOut,
-         onAuthStateChanged }                     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+         onAuthStateChanged }                    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc,
          collection, addDoc, getDocs,
-         deleteDoc, query, orderBy }              from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+         deleteDoc, query, orderBy }             from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // ---- Firebase Config ----
 const firebaseConfig = {
@@ -80,10 +80,9 @@ function calcStreak() {
   let streak = 0;
   const today = new Date();
   for (let i = 0; i < 30; i++) {
-    const d  = new Date(today);
+    const d = new Date(today);
     d.setDate(d.getDate() - i);
-    const ds = d.toDateString();
-    if (FOOD_LOG.some(f => new Date(f.date).toDateString() === ds)) streak++;
+    if (FOOD_LOG.some(f => new Date(f.date).toDateString() === d.toDateString())) streak++;
     else break;
   }
   return streak;
@@ -94,20 +93,111 @@ function generateOTPCode() {
 }
 
 // =============================================================================
-// PASSWORD UI HELPERS
+// DARK MODE
 // =============================================================================
+
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  document.getElementById('theme-toggle-btn').classList.toggle('on', !isDark);
+  localStorage.setItem('sb-theme', isDark ? 'light' : 'dark');
+}
+
+function initTheme() {
+  const saved = localStorage.getItem('sb-theme') || 'light';
+  document.documentElement.setAttribute('data-theme', saved);
+  if (saved === 'dark') document.getElementById('theme-toggle-btn').classList.add('on');
+}
+
+// =============================================================================
+// BURGER MENU
+// =============================================================================
+
+function openBurger() {
+  document.getElementById('burger-menu').classList.add('open');
+  document.getElementById('burger-overlay').classList.add('open');
+}
+
+function closeBurger() {
+  document.getElementById('burger-menu').classList.remove('open');
+  document.getElementById('burger-overlay').classList.remove('open');
+}
+
+// Update burger active link
+function updateBurgerActive(p) {
+  document.querySelectorAll('.burger-link').forEach(l => {
+    l.classList.toggle('active', l.textContent.trim().toLowerCase().includes(
+      p === 'recommendations' ? 'advice' : p === 'log' ? 'food' : p
+    ));
+  });
+}
+
+// =============================================================================
+// PASSWORD HELPERS
+// =============================================================================
+
+function togglePass(id, btn) {
+  const input = document.getElementById(id);
+  const isPass = input.type === 'password';
+  input.type = isPass ? 'text' : 'password';
+  btn.innerHTML = isPass
+    ? '<i data-lucide="eye-off" width="16" height="16"></i>'
+    : '<i data-lucide="eye" width="16" height="16"></i>';
+  if (window.lucide) lucide.createIcons();
+}
+
+function checkGmail() {
+  const val   = document.getElementById('reg-email').value.trim();
+  const hint  = document.getElementById('gmail-hint');
+  if (!val) { hint.textContent = ''; return; }
+  if (val.endsWith('@gmail.com')) {
+    hint.textContent = '✓ Valid Gmail address';
+    hint.style.color = '#52B788';
+  } else {
+    hint.textContent = '✗ Only Gmail addresses are accepted (@gmail.com)';
+    hint.style.color = '#E63946';
+  }
+}
 
 function checkPassStrength() {
   const pass = document.getElementById('reg-pass').value;
   const bar  = document.getElementById('pass-bar');
   const hint = document.getElementById('pass-hint');
-  let strength = 0;
-  if (pass.length >= 6)            strength++;
-  if (pass.length >= 10)           strength++;
-  if (/[A-Z]/.test(pass))         strength++;
-  if (/[0-9]/.test(pass))         strength++;
-  if (/[^A-Za-z0-9]/.test(pass))  strength++;
 
+  const rules = {
+    len:     pass.length >= 8,
+    upper:   /[A-Z]/.test(pass),
+    num:     /[0-9]/.test(pass),
+    special: /[^A-Za-z0-9]/.test(pass)
+  };
+
+  // Update rule indicators
+  const setRule = (id, ok) => {
+    const el = document.getElementById('r-' + id);
+    if (!el) return;
+    el.classList.toggle('ok', ok);
+    el.innerHTML = ok
+      ? `<i data-lucide="check-circle" width="12" height="12"></i> ${el.textContent.trim().replace(/^.+?\s/, '')}`
+      : `<i data-lucide="circle" width="12" height="12"></i> ${el.textContent.trim().replace(/^.+?\s/, '')}`;
+  };
+
+  // Re-set with original text
+  const ruleTexts = {
+    len:     'At least 8 characters',
+    upper:   'One uppercase letter (A-Z)',
+    num:     'One number (0-9)',
+    special: 'One special character (!@#$%)'
+  };
+  Object.entries(rules).forEach(([k, ok]) => {
+    const el = document.getElementById('r-' + k);
+    if (!el) return;
+    el.classList.toggle('ok', ok);
+    el.innerHTML = `<i data-lucide="${ok ? 'check-circle' : 'circle'}" width="12" height="12"></i> ${ruleTexts[k]}`;
+  });
+  if (window.lucide) lucide.createIcons();
+
+  const score = Object.values(rules).filter(Boolean).length;
   const levels = [
     { w: '0%',   bg: 'transparent', text: '' },
     { w: '25%',  bg: '#E63946',     text: 'Weak' },
@@ -115,7 +205,7 @@ function checkPassStrength() {
     { w: '75%',  bg: '#52B788',     text: 'Good' },
     { w: '100%', bg: '#2D6A4F',     text: 'Strong' },
   ];
-  const lvl = Math.min(strength, 4);
+  const lvl = Math.min(score, 4);
   bar.style.width      = levels[lvl].w;
   bar.style.background = levels[lvl].bg;
   hint.textContent     = levels[lvl].text;
@@ -141,18 +231,47 @@ function checkPassMatch() {
 // TERMS MODAL
 // =============================================================================
 
-function openTerms() {
-  document.getElementById('terms-modal').style.display = 'flex';
-}
-
-function closeTerms() {
-  document.getElementById('terms-modal').style.display = 'none';
-}
-
+function openTerms() { document.getElementById('terms-modal').style.display = 'flex'; }
+function closeTerms() { document.getElementById('terms-modal').style.display = 'none'; }
 function acceptTerms() {
   document.getElementById('reg-terms').checked = true;
   closeTerms();
   showToast('Terms accepted ✓');
+}
+
+// =============================================================================
+// PROFILE PICTURE
+// =============================================================================
+
+function handleProfilePic(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const src = e.target.result;
+    localStorage.setItem('sb-profile-pic', src);
+    applyProfilePic(src);
+  };
+  reader.readAsDataURL(file);
+}
+
+function applyProfilePic(src) {
+  const img       = document.getElementById('prof-avatar-img');
+  const initials  = document.getElementById('prof-avatar-initials');
+  const navAvatar = document.getElementById('nav-avatar');
+  const burgerAv  = document.getElementById('burger-avatar');
+  if (src) {
+    img.src = src;
+    img.style.display = 'block';
+    if (initials) initials.style.display = 'none';
+    navAvatar.innerHTML = `<img src="${src}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+    burgerAv.innerHTML  = `<img src="${src}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+  }
+}
+
+function loadProfilePic() {
+  const src = localStorage.getItem('sb-profile-pic');
+  if (src) applyProfilePic(src);
 }
 
 // =============================================================================
@@ -185,15 +304,11 @@ function otpBack(e, idx) {
 }
 
 async function sendOTPEmail(email, name, code) {
-  // ✅ Variable names match the EmailJS template EXACTLY:
-  //    {{to_name}}  → user's first name
-  //    {{otp_code}} → the 6-digit code
-  //    To Email field in template must be set to {{to_email}}
   emailjs.init(EMAILJS_PUBLIC_KEY);
   await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
-    to_email: email,   // → goes to the "To Email" field in EmailJS template
-    to_name:  name,    // → {{to_name}} in template body
-    otp_code: code,    // → {{otp_code}} in template body
+    to_email: email,
+    to_name:  name,
+    otp_code: code,
   });
 }
 
@@ -207,26 +322,19 @@ async function resendOTP() {
   document.getElementById('otp-1').focus();
   try {
     await sendOTPEmail(PENDING_OTP.email, PENDING_OTP.profile.fname, newCode);
-    showToast('A new code has been sent to your email!');
-  } catch (err) {
-    showToast('Failed to resend. Check your connection.');
-    console.error('Resend OTP error:', err);
-  }
+    showToast('A new code has been sent!');
+  } catch { showToast('Failed to resend. Try again.'); }
 }
 
 async function verifyOTP() {
   if (!PENDING_OTP) return;
-  const entered = Array.from({length: 6}, (_, i) =>
-    document.getElementById('otp-' + (i + 1)).value
-  ).join('');
+  const entered = Array.from({length: 6}, (_, i) => document.getElementById('otp-' + (i + 1)).value).join('');
+  const errEl   = document.getElementById('otp-error');
 
-  const errEl = document.getElementById('otp-error');
   if (entered.length < 6) { errEl.textContent = 'Please enter all 6 digits.'; return; }
-  if (Date.now() > PENDING_OTP.expires) {
-    errEl.textContent = 'This code has expired. Please request a new one.'; return;
-  }
+  if (Date.now() > PENDING_OTP.expires) { errEl.textContent = 'Code expired. Request a new one.'; return; }
   if (entered !== PENDING_OTP.code) {
-    errEl.textContent = 'Incorrect code. Please try again.';
+    errEl.textContent = 'Incorrect code. Try again.';
     for (let i = 1; i <= 6; i++) document.getElementById('otp-' + i).value = '';
     document.getElementById('otp-1').focus();
     return;
@@ -234,14 +342,12 @@ async function verifyOTP() {
 
   errEl.textContent = '';
   try {
-    const cred = await createUserWithEmailAndPassword(
-      auth, PENDING_OTP.email, PENDING_OTP.password
-    );
+    const cred  = await createUserWithEmailAndPassword(auth, PENDING_OTP.email, PENDING_OTP.password);
     await saveUserProfile(cred.user.uid, PENDING_OTP.profile);
     const fname = PENDING_OTP.profile.fname;
     PENDING_OTP = null;
     document.getElementById('otp-screen').style.display = 'none';
-    showToast('Account verified! Welcome, ' + fname + '! 🎉');
+    showToast(`Account verified! Welcome, ${fname}! 🎉`);
   } catch (err) {
     errEl.textContent = 'Account creation failed: ' + err.message;
   }
@@ -285,8 +391,7 @@ onAuthStateChanged(auth, async (firebaseUser) => {
     FOOD_LOG = await fetchFoodLog(firebaseUser.uid);
     enterApp();
   } else {
-    USER     = null;
-    FOOD_LOG = [];
+    USER = null; FOOD_LOG = [];
     document.getElementById('app-screen').style.display  = 'none';
     document.getElementById('auth-screen').style.display = 'flex';
   }
@@ -312,9 +417,7 @@ async function doLogin() {
   try {
     await signInWithEmailAndPassword(auth, email, pass);
   } catch (err) {
-    showToast(err.code === 'auth/invalid-credential'
-      ? 'Incorrect email or password'
-      : 'Login failed: ' + err.message);
+    showToast(err.code === 'auth/invalid-credential' ? 'Incorrect email or password' : 'Login failed: ' + err.message);
   }
 }
 
@@ -334,16 +437,20 @@ async function doRegister() {
   if (!fname || !email || !pass || !confirm || !age || !gender || !height || !weight) {
     showToast('Please fill in all fields'); return;
   }
-  if (pass.length < 6)   { showToast('Password must be at least 6 characters'); return; }
-  if (pass !== confirm)  { showToast('Passwords do not match'); return; }
-  if (!termsOk)          { showToast('Please agree to the Terms of Service to continue'); return; }
+  if (!email.endsWith('@gmail.com')) {
+    showToast('Only Gmail addresses are accepted'); return;
+  }
+  if (pass.length < 8) { showToast('Password must be at least 8 characters'); return; }
+  if (!/[A-Z]/.test(pass)) { showToast('Password must contain at least one uppercase letter'); return; }
+  if (!/[0-9]/.test(pass)) { showToast('Password must contain at least one number'); return; }
+  if (!/[^A-Za-z0-9]/.test(pass)) { showToast('Password must contain at least one special character'); return; }
+  if (pass !== confirm) { showToast('Passwords do not match'); return; }
+  if (!termsOk) { showToast('Please agree to the Terms of Service'); return; }
 
   const code = generateOTPCode();
   PENDING_OTP = {
-    code,
-    email,
-    password: pass,
-    expires:  Date.now() + 10 * 60 * 1000,
+    code, email, password: pass,
+    expires: Date.now() + 10 * 60 * 1000,
     profile: {
       fname, lname, email,
       age: +age, gender, height: +height, weight: +weight, goal,
@@ -359,15 +466,15 @@ async function doRegister() {
     openOTP(email);
   } catch (err) {
     console.error('EmailJS error:', err);
-    showToast('Failed to send verification email. Please try again.');
+    showToast('Failed to send verification email. Try again.');
     PENDING_OTP = null;
   }
 }
 
 async function doLogout() {
   await signOut(auth);
-  USER     = null;
-  FOOD_LOG = [];
+  USER = null; FOOD_LOG = [];
+  localStorage.removeItem('sb-profile-pic');
   document.getElementById('app-screen').style.display  = 'none';
   document.getElementById('auth-screen').style.display = 'flex';
   showToast('Logged out successfully');
@@ -381,23 +488,24 @@ function enterApp() {
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('app-screen').style.display  = 'flex';
   const init = getInitials(USER);
-  document.getElementById('nav-avatar').textContent  = init;
-  document.getElementById('prof-avatar').textContent = init;
+  document.getElementById('nav-avatar').textContent    = init;
+  document.getElementById('burger-avatar').textContent = init;
+  document.getElementById('burger-name').textContent   = USER.fname + ' ' + USER.lname;
+  document.getElementById('burger-email').textContent  = USER.email;
+  loadProfilePic();
   updateDashboard();
   loadProfileForm();
+  if (window.lucide) lucide.createIcons();
 }
 
 function showPage(p) {
   document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
-  document.querySelectorAll('.nav-link').forEach(x => x.classList.remove('active'));
   document.getElementById('page-' + p).classList.add('active');
-  document.querySelectorAll('.nav-link').forEach(x => {
-    if (x.getAttribute('onclick') && x.getAttribute('onclick').includes("'" + p + "'"))
-      x.classList.add('active');
-  });
+  updateBurgerActive(p);
   if (p === 'dashboard')       updateDashboard();
-  if (p === 'recommendations') { loadGoalBars(); generateWeeklyInsights(); renderNutritionTips(); }
+  if (p === 'recommendations') { generateWeeklyInsights(); renderNutritionTips(); }
   if (p === 'log')             renderLogEntries();
+  if (window.lucide) lucide.createIcons();
 }
 
 // =============================================================================
@@ -421,7 +529,7 @@ function updateDashboard() {
 
   const hour  = new Date().getHours();
   const greet = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-  document.getElementById('dash-greeting').textContent = greet + ', ' + USER.fname + '!';
+  document.getElementById('dash-greeting').textContent = `${greet}, ${USER.fname}!`;
   document.getElementById('dash-date').textContent = new Date().toLocaleDateString('en-US', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
   });
@@ -430,8 +538,9 @@ function updateDashboard() {
   const todayLogs = FOOD_LOG.filter(f => new Date(f.date).toDateString() === today);
   const totalCals = todayLogs.reduce((s, f) => s + f.calories, 0);
   const target    = USER.cals || 2000;
+
   document.getElementById('dash-cals-today').textContent = totalCals;
-  document.getElementById('dash-cals-goal').textContent  = '/ ' + target + ' kcal goal';
+  document.getElementById('dash-cals-goal').textContent  = `/ ${target} kcal goal`;
   document.getElementById('dash-cal-bar').style.width    = Math.min(100, (totalCals / target) * 100) + '%';
 
   document.getElementById('s-foods').textContent    = todayLogs.length;
@@ -446,9 +555,12 @@ function updateDashboard() {
   document.getElementById('s-streak').textContent  = streak;
   document.getElementById('sp-streak').style.width = Math.min(100, streak * 14) + '%';
 
+  // Small dashboard tip
+  renderDashTip();
+
   const recent = document.getElementById('dash-recent');
   if (todayLogs.length === 0) {
-    recent.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🥦</div><div>No meals logged today</div></div>`;
+    recent.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div>No meals logged today</div></div>`;
   } else {
     recent.innerHTML = todayLogs.slice(-6).reverse().map(f => `
       <div class="food-chip">
@@ -460,10 +572,10 @@ function updateDashboard() {
       </div>`).join('');
   }
 
-  const tips = generateTips(todayLogs, totalCals, target, +bmi);
+  const tips  = generateTips(todayLogs, totalCals, target, +bmi);
   document.getElementById('dash-recos').innerHTML = tips.map(t => `
     <div class="reco-card">
-      <div class="reco-icon">${t.icon}</div>
+      <div class="reco-icon">${t.iconSvg || ''}</div>
       <div class="reco-text"><strong>${t.title}</strong>${t.msg}</div>
     </div>`).join('');
 
@@ -472,24 +584,40 @@ function updateDashboard() {
   document.getElementById('prof-ht').textContent    = USER.height;
   document.getElementById('prof-name').textContent  = USER.fname + ' ' + USER.lname;
   document.getElementById('prof-email').textContent = USER.email;
+
+  if (window.lucide) lucide.createIcons();
+}
+
+function renderDashTip() {
+  if (!USER) return;
+  const goal = USER.goal || 'healthy';
+  const goalLabels = { lose:'Lose Weight', maintain:'Maintain Weight', gain:'Gain Muscle', healthy:'Eat Healthier' };
+  document.getElementById('dash-tip-badge').textContent = goalLabels[goal] || 'Your Goal';
+
+  const tips = TIPS_DATA[goal] || TIPS_DATA['healthy'];
+  const staticTips = tips.filter(t => !t.didYouKnow);
+  const pick = staticTips[Math.floor(Date.now() / 86400000) % staticTips.length];
+  if (pick) {
+    document.getElementById('dash-tip-body').textContent = pick.title + ' — ' + pick.desc;
+  }
 }
 
 function generateTips(logs, cals, target, bmi) {
   const tips = [];
   if (logs.length === 0)
-    tips.push({ icon: '🍳', title: 'Start Your Day Right', msg: 'Log your first meal to get personalized nutrition insights and recommendations.' });
+    tips.push({ iconSvg: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--orange)"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2z"/><path d="M12 6v6l4 2"/></svg>', title: 'Start Your Day Right ', msg: 'Log your first meal to get personalized nutrition insights.' });
   if (cals > target * 1.1)
-    tips.push({ icon: '⚠️', title: 'Calorie Alert', msg: `You've consumed ${cals} kcal — ${cals - target} over your ${target} kcal goal. Consider lighter options for your next meal.` });
+    tips.push({ iconSvg: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--orange)"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>', title: 'Calorie Alert ', msg: `You've consumed ${cals} kcal — ${cals-target} over your ${target} kcal goal.` });
   if (cals < target * 0.5 && logs.length > 0)
-    tips.push({ icon: '🥑', title: 'Fuel Up', msg: `You're only at ${cals} kcal. Make sure to meet your ${target} kcal daily goal.` });
+    tips.push({ iconSvg: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--orange)"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>', title: 'Fuel Up ', msg: `You're only at ${cals} kcal. Make sure to meet your ${target} kcal daily goal.` });
   if (logs.filter(f => f.rating === 'unhealthy').length > 0)
-    tips.push({ icon: '🥗', title: 'Balance Your Plate', msg: "You've logged some less healthy options. Try pairing with vegetables or whole grains." });
+    tips.push({ iconSvg: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--green)"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>', title: 'Balance Your Plate ', msg: "You've logged some less healthy options. Try pairing with vegetables or whole grains." });
   if (bmi > 25)
-    tips.push({ icon: '🚶', title: 'Stay Active', msg: 'Combine nutrition tracking with regular physical activity. Even a 30-minute walk helps!' });
+    tips.push({ iconSvg: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--orange)"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>', title: 'Stay Active ', msg: 'Combine nutrition tracking with regular physical activity. Even a 30-min walk helps!' });
   if (bmi < 18.5)
-    tips.push({ icon: '🍚', title: 'Increase Intake', msg: 'Your BMI suggests you may benefit from more calorie-dense foods like nuts, legumes, and whole grains.' });
+    tips.push({ iconSvg: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--orange)"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>', title: 'Increase Intake ', msg: 'Your BMI suggests you may benefit from more calorie-dense foods like nuts and legumes.' });
   if (tips.length === 0)
-    tips.push({ icon: '🌟', title: 'Great Job!', msg: "You're on track today! Keep logging your meals consistently for the best insights." });
+    tips.push({ iconSvg: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--orange)"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>', title: 'Great Job! ', msg: "You're on track today! Keep logging consistently for the best insights." });
   return tips.slice(0, 3);
 }
 
@@ -517,31 +645,27 @@ async function logFood() {
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 1000,
-        system: `You are a nutrition expert. Analyze the food item and return ONLY valid JSON with no markdown fences or extra text: {"rating":"healthy"|"moderate"|"unhealthy","calories_estimate":number,"analysis":"2-sentence analysis","nutrients":["nutrient 1","nutrient 2","nutrient 3"],"tip":"one short actionable tip"}`,
-        messages: [{ role: 'user', content: `Food: ${name}. User logged ${cal || 'unknown'} calories. User goal: ${USER?.goal || 'healthy eating'}.` }]
+        system: `You are a nutrition expert. Analyze the food item and return ONLY valid JSON: {"rating":"healthy"|"moderate"|"unhealthy","calories_estimate":number,"analysis":"2-sentence analysis","nutrients":["n1","n2","n3"],"tip":"one short actionable tip"}`,
+        messages: [{ role:'user', content:`Food: ${name}. Logged: ${cal||'unknown'} cal. Goal: ${USER?.goal||'healthy eating'}.` }]
       })
     });
-    const data        = await res.json();
-    const text        = data.content.map(i => i.text || '').join('');
-    const clean       = text.replace(/```json|```/g, '').trim();
-    const parsed      = JSON.parse(clean);
-    rating            = parsed.rating || 'moderate';
-    const finalCal    = cal || parsed.calories_estimate || 200;
-    const badgeClass  = rating === 'healthy' ? 'badge-healthy' : rating === 'unhealthy' ? 'badge-unhealthy' : 'badge-moderate';
-    const ratingLabel = rating.charAt(0).toUpperCase() + rating.slice(1);
+    const data       = await res.json();
+    const text       = data.content.map(i => i.text||'').join('');
+    const parsed     = JSON.parse(text.replace(/```json|```/g,'').trim());
+    rating           = parsed.rating || 'moderate';
+    const finalCal   = cal || parsed.calories_estimate || 200;
+    const badgeClass = rating==='healthy'?'badge-healthy':rating==='unhealthy'?'badge-unhealthy':'badge-moderate';
 
     resultHTML = `
       <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.7rem">
-        <span class="entry-badge ${badgeClass}" style="font-size:.8rem;padding:.3rem .8rem">${ratingLabel}</span>
-        <span style="font-size:.82rem;color:var(--muted)">~${finalCal} kcal estimated</span>
+        <span class="entry-badge ${badgeClass}" style="font-size:.8rem;padding:.3rem .8rem">${rating.charAt(0).toUpperCase()+rating.slice(1)}</span>
+        <span style="font-size:.82rem;color:var(--muted)">~${finalCal} kcal</span>
       </div>
       <div style="margin-bottom:.6rem">${parsed.analysis}</div>
       <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.6rem">
-        ${(parsed.nutrients || []).map(n =>
-          `<span style="background:#F0FAF5;color:#1B4332;font-size:.75rem;padding:.22rem .65rem;border-radius:20px">${n}</span>`
-        ).join('')}
+        ${(parsed.nutrients||[]).map(n=>`<span style="background:var(--green-pale);color:var(--green);font-size:.75rem;padding:.22rem .65rem;border-radius:20px">${n}</span>`).join('')}
       </div>
-      <div style="font-size:.82rem;color:var(--orange);font-weight:500">💡 ${parsed.tip}</div>`;
+      <div style="font-size:.82rem;color:var(--orange);font-weight:600">💡 ${parsed.tip}</div>`;
 
     const entry = { name, calories: finalCal, meal, rating, date: new Date().toISOString(), analysis: parsed.analysis };
     const firestoreId = await addFoodEntry(entry);
@@ -551,7 +675,7 @@ async function logFood() {
     console.error('Analysis error:', err);
     const finalCal = cal || 200;
     resultHTML = `<div style="color:var(--muted);font-size:.85rem">AI analysis unavailable. Food logged with ${finalCal} calories.</div>`;
-    const entry = { name, calories: finalCal, meal, rating: 'moderate', date: new Date().toISOString(), analysis: '' };
+    const entry = { name, calories: finalCal, meal, rating:'moderate', date: new Date().toISOString(), analysis:'' };
     const firestoreId = await addFoodEntry(entry);
     FOOD_LOG.push({ firestoreId, ...entry });
   }
@@ -572,26 +696,18 @@ function renderLogEntries() {
   const container = document.getElementById('log-entries');
 
   if (todayLogs.length === 0) {
-    container.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">🍽️</div>
-        <div>No foods logged yet today</div>
-        <div class="empty-hint">Add your first meal above</div>
-      </div>`;
+    container.innerHTML = `<div class="empty-state"><div>No foods logged yet today</div><div class="empty-hint">Add your first meal above</div></div>`;
     return;
   }
-
   container.innerHTML = [...todayLogs].reverse().map(f => {
-    const badgeClass = f.rating === 'healthy' ? 'badge-healthy' : f.rating === 'unhealthy' ? 'badge-unhealthy' : 'badge-moderate';
+    const bc = f.rating==='healthy'?'badge-healthy':f.rating==='unhealthy'?'badge-unhealthy':'badge-moderate';
     return `
       <div class="log-entry">
         <span class="entry-meal meal-tag-${f.meal}">${f.meal}</span>
         <span class="entry-name">${f.name}</span>
         <span class="entry-cal">${f.calories} kcal</span>
-        <span class="entry-badge ${badgeClass}">${f.rating}</span>
-        <button onclick="window.deleteEntry('${f.firestoreId}')"
-          style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:1rem;padding:.2rem .4rem;border-radius:6px"
-          title="Delete">✕</button>
+        <span class="entry-badge ${bc}">${f.rating}</span>
+        <button onclick="window.deleteEntry('${f.firestoreId}')" style="background:none;border:none;cursor:pointer;color:var(--muted);padding:.2rem .4rem;border-radius:6px" title="Delete">✕</button>
       </div>`;
   }).join('');
 }
@@ -605,38 +721,11 @@ async function deleteEntry(firestoreId) {
 }
 
 // =============================================================================
-// RECOMMENDATIONS
+// SMART ADVICE PAGE
 // =============================================================================
 
-function loadGoalBars() {
-  if (!USER) return;
-  const today     = new Date().toDateString();
-  const todayLogs = FOOD_LOG.filter(f => new Date(f.date).toDateString() === today);
-  const totalCals = todayLogs.reduce((s, f) => s + f.calories, 0);
-  const target    = USER.cals || 2000;
-  const healthyPct = todayLogs.length > 0
-    ? Math.round((todayLogs.filter(f => f.rating === 'healthy').length / todayLogs.length) * 100) : 0;
-
-  const bars = [
-    { label: 'Calories',      val: Math.min(100, Math.round(totalCals / target * 100)), detail: totalCals + ' / ' + target + ' kcal',       color: 'var(--green)' },
-    { label: 'Healthy Foods', val: healthyPct,                                           detail: healthyPct + '% of logged items',            color: '#52B788'      },
-    { label: 'Meals Logged',  val: Math.min(100, Math.round(todayLogs.length / 4 * 100)), detail: todayLogs.length + ' of 4 recommended',    color: 'var(--blue)'  },
-  ];
-
-  document.getElementById('goal-bars').innerHTML = bars.map(b => `
-    <div class="goal-bar-row">
-      <div class="goal-bar-meta">
-        <span class="goal-bar-label">${b.label}</span>
-        <span class="goal-bar-detail">${b.detail}</span>
-      </div>
-      <div class="goal-bar-track">
-        <div class="goal-bar-fill" style="width:${b.val}%;background:${b.color}"></div>
-      </div>
-    </div>`).join('');
-}
-
 async function generateWeeklyInsights() {
-  if (!USER) { document.getElementById('weekly-insights').textContent = 'Please log in.'; return; }
+  if (!USER) return;
   const el = document.getElementById('weekly-insights');
   el.innerHTML = '<div class="analysis-loading"><div class="spinner"></div> Generating insights...</div>';
 
@@ -650,50 +739,89 @@ async function generateWeeklyInsights() {
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 1000,
-        system: 'You are a friendly nutrition coach. Give 3 short, practical, personalized insights based on the user data. Use bullet points with emoji. Keep it under 120 words total.',
-        messages: [{ role: 'user', content: `User: ${USER.fname}, goal: ${USER.goal}, BMI: ${calcBMI(USER.height, USER.weight)}, recent foods: ${summary}` }]
+        system: 'You are a friendly nutrition coach. Give 3 short, practical, personalized weekly insights. Use bullet points with emoji. Under 120 words total.',
+        messages: [{ role:'user', content:`User: ${USER.fname}, goal: ${USER.goal}, BMI: ${calcBMI(USER.height,USER.weight)}, recent foods: ${summary}` }]
       })
     });
     const data = await res.json();
-    const text = data.content.map(i => i.text || '').join('');
-    el.innerHTML = text.replace(/\n/g, '<br>');
+    el.innerHTML = data.content.map(i=>i.text||'').join('').replace(/\n/g,'<br>');
   } catch {
     el.textContent = 'Log more meals to see your weekly insights!';
   }
 }
 
+async function generateAIAdvice() {
+  if (!USER) return;
+  const btn    = document.querySelector('#ai-advice-content .btn-primary');
+  const result = document.getElementById('ai-advice-result');
+  btn.disabled = true;
+  btn.textContent = 'Generating...';
+  result.style.display = 'none';
+
+  const bmi     = calcBMI(USER.height, USER.weight);
+  const cat     = getBMICat(+bmi);
+  const today   = new Date().toDateString();
+  const logs    = FOOD_LOG.filter(f => new Date(f.date).toDateString() === today);
+  const summary = logs.map(f => f.name+'('+f.rating+')').join(', ') || 'No food logged today';
+  const recent  = FOOD_LOG.slice(-10).map(f=>f.name+'('+f.rating+')').join(', ') || 'No recent history';
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1500,
+        system: `You are SmartBite AI, a professional nutrition advisor. Give a detailed, warm, personalized nutrition advice. Structure your response with: 1) A personal greeting, 2) Assessment of current status, 3) Three specific actionable recommendations for their goal, 4) One motivational closing sentence. Use plain text with line breaks. Be specific, evidence-based, and encouraging. Around 200 words.`,
+        messages: [{ role:'user', content:`Name: ${USER.fname}. Goal: ${USER.goal}. BMI: ${bmi} (${cat}). Age: ${USER.age}. Gender: ${USER.gender}. Height: ${USER.height}cm. Weight: ${USER.weight}kg. Today's food: ${summary}. Recent history: ${recent}. Daily calorie target: ${USER.cals} kcal.` }]
+      })
+    });
+    const data = await res.json();
+    const text = data.content.map(i=>i.text||'').join('');
+    result.style.display = 'block';
+    result.innerHTML = text.replace(/\n/g,'<br>');
+  } catch {
+    result.style.display = 'block';
+    result.textContent = 'Unable to generate advice. Please try again.';
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<i data-lucide="sparkles" width="15" height="15"></i> Regenerate Advice';
+  if (window.lucide) lucide.createIcons();
+}
+
 // =============================================================================
-// NUTRITION TIPS
+// NUTRITION TIPS DATA
 // =============================================================================
 
 const TIPS_DATA = {
   lose: [
-    { icon: '🥦', bg: '#D8F3DC', title: 'Create a sustainable calorie deficit', desc: 'Aim for 300–500 kcal below your TDEE daily. Drastic cuts slow your metabolism and cause muscle loss — gradual reduction preserves lean mass while burning fat.', tag: 'Weight Loss', tagBg: '#D8F3DC', tagColor: '#1B6B3A' },
-    { icon: '🍗', bg: '#FFF3E0', title: 'High protein keeps hunger at bay', desc: 'Protein has the highest satiety value of all macronutrients. Target 1.2–1.6 g per kg of body weight daily using chicken breast, fish, eggs, or legumes.', tag: 'Macronutrients', tagBg: '#FFF3E0', tagColor: '#E65100' },
-    { icon: '🌾', bg: '#F3E5F5', title: 'Swap refined carbs for whole grains', desc: 'Brown rice, oats, and quinoa digest slower, keeping blood sugar stable and hunger controlled for hours — unlike white bread or sugary cereals.', tag: 'Carbohydrates', tagBg: '#F3E5F5', tagColor: '#6A1B9A' },
-    { icon: '💧', bg: '#E3F2FD', title: 'Drink water before every meal', desc: 'Studies show drinking 500 ml of water 30 minutes before meals reduces calorie intake by up to 13%. It also prevents mistaking thirst for hunger.', tag: 'Hydration', tagBg: '#E3F2FD', tagColor: '#1565C0' },
-    { didYouKnow: true, fact: 'Eating slowly and mindfully can reduce your total calorie intake by up to 20%. It takes about 20 minutes for your brain to register fullness — so pause between bites.' }
+    { icon:'leaf', bg:'#D8F3DC', title:'Create a sustainable calorie deficit', desc:'Aim for 300–500 kcal below your TDEE daily. Gradual reduction preserves lean mass while burning fat.', tag:'Weight Loss', tagBg:'#D8F3DC', tagColor:'#1B6B3A' },
+    { icon:'drumstick', bg:'#FFF3E0', title:'High protein keeps hunger at bay', desc:'Target 1.2–1.6 g protein per kg bodyweight using chicken, fish, eggs, or legumes.', tag:'Macronutrients', tagBg:'#FFF3E0', tagColor:'#E65100' },
+    { icon:'wheat', bg:'#F3E5F5', title:'Swap refined carbs for whole grains', desc:'Brown rice, oats, and quinoa digest slower, keeping blood sugar stable and hunger controlled for hours.', tag:'Carbohydrates', tagBg:'#F3E5F5', tagColor:'#6A1B9A' },
+    { icon:'droplets', bg:'#E3F2FD', title:'Drink water before every meal', desc:'500 ml of water 30 minutes before meals reduces calorie intake by up to 13%.', tag:'Hydration', tagBg:'#E3F2FD', tagColor:'#1565C0' },
+    { didYouKnow: true, fact:'Eating slowly can reduce total calorie intake by up to 20%. It takes 20 minutes for your brain to register fullness.' }
   ],
   maintain: [
-    { icon: '⚖️', bg: '#E8F5E9', title: 'Match energy in with energy out', desc: 'Maintenance is about balance, not perfection. Track your calories a few days per week to stay aware of your intake without obsessing over every meal.', tag: 'Energy Balance', tagBg: '#E8F5E9', tagColor: '#2E7D32' },
-    { icon: '🥗', bg: '#D8F3DC', title: 'Eat a wide variety of whole foods', desc: 'A diverse diet ensures you get all essential vitamins and minerals. Aim to eat at least 30 different plant foods per week — vegetables, fruits, grains, legumes, nuts.', tag: 'Food Variety', tagBg: '#D8F3DC', tagColor: '#1B6B3A' },
-    { icon: '🕗', bg: '#FFFDE7', title: 'Keep consistent meal timing', desc: 'Eating at regular intervals helps regulate hunger hormones (ghrelin and leptin), preventing the urge to overeat at any single sitting.', tag: 'Meal Timing', tagBg: '#FFFDE7', tagColor: '#F57F17' },
-    { icon: '🧂', bg: '#FCE4EC', title: 'Limit ultra-processed food intake', desc: 'Ultra-processed foods are engineered to override your fullness signals. Keeping them below 20% of your diet reduces the risk of unintentional weight gain.', tag: 'Food Quality', tagBg: '#FCE4EC', tagColor: '#880E4F' },
-    { didYouKnow: true, fact: 'Research shows people who weigh themselves regularly (once or twice a week) are significantly better at maintaining their weight long-term than those who avoid the scale.' }
+    { icon:'scale', bg:'#E8F5E9', title:'Match energy in with energy out', desc:'Track calories a few days per week to stay aware of your intake without obsessing over every meal.', tag:'Energy Balance', tagBg:'#E8F5E9', tagColor:'#2E7D32' },
+    { icon:'salad', bg:'#D8F3DC', title:'Eat a wide variety of whole foods', desc:'Aim for 30 different plant foods per week — vegetables, fruits, grains, legumes, nuts.', tag:'Food Variety', tagBg:'#D8F3DC', tagColor:'#1B6B3A' },
+    { icon:'clock', bg:'#FFFDE7', title:'Keep consistent meal timing', desc:'Regular intervals regulate hunger hormones, preventing the urge to overeat at any single sitting.', tag:'Meal Timing', tagBg:'#FFFDE7', tagColor:'#F57F17' },
+    { icon:'salt', bg:'#FCE4EC', title:'Limit ultra-processed food intake', desc:'Keep ultra-processed foods below 20% of your diet to reduce unintentional weight gain.', tag:'Food Quality', tagBg:'#FCE4EC', tagColor:'#880E4F' },
+    { didYouKnow: true, fact:'People who weigh themselves weekly are significantly better at maintaining weight long-term than those who avoid the scale.' }
   ],
   gain: [
-    { icon: '🍚', bg: '#FFF3E0', title: 'Eat in a controlled calorie surplus', desc: 'Target 250–500 kcal above your TDEE daily. A slow bulk (0.25–0.5 kg/week) minimizes fat gain while maximizing lean muscle growth over time.', tag: 'Muscle Gain', tagBg: '#FFF3E0', tagColor: '#E65100' },
-    { icon: '🥩', bg: '#D8F3DC', title: 'Prioritize protein around workouts', desc: 'Consume 25–40 g of high-quality protein within 2 hours of training. This maximizes muscle protein synthesis — the key driver of muscle hypertrophy.', tag: 'Performance', tagBg: '#D8F3DC', tagColor: '#1B6B3A' },
-    { icon: '🥜', bg: '#F3E5F5', title: 'Add calorie-dense healthy foods', desc: 'Nuts, nut butters, avocado, olive oil, and whole milk are calorie-dense without excessive bulk — ideal for hitting your calorie targets without feeling overly full.', tag: 'Calorie Dense', tagBg: '#F3E5F5', tagColor: '#6A1B9A' },
-    { icon: '😴', bg: '#E3F2FD', title: 'Sleep is when muscles are built', desc: 'Most muscle repair and growth happens during deep sleep. Aim for 7–9 hours per night. Poor sleep elevates cortisol, a hormone that actively breaks down muscle tissue.', tag: 'Recovery', tagBg: '#E3F2FD', tagColor: '#1565C0' },
-    { didYouKnow: true, fact: 'Creatine monohydrate is the most researched sports supplement in history. Studies consistently show it increases strength and lean mass gains by 5–15% when combined with resistance training.' }
+    { icon:'flame', bg:'#FFF3E0', title:'Eat in a controlled calorie surplus', desc:'Target 250–500 kcal above TDEE daily. A slow bulk minimizes fat gain while maximizing lean muscle growth.', tag:'Muscle Gain', tagBg:'#FFF3E0', tagColor:'#E65100' },
+    { icon:'dumbbell', bg:'#D8F3DC', title:'Prioritize protein around workouts', desc:'Consume 25–40 g of quality protein within 2 hours of training to maximize muscle protein synthesis.', tag:'Performance', tagBg:'#D8F3DC', tagColor:'#1B6B3A' },
+    { icon:'nut', bg:'#F3E5F5', title:'Add calorie-dense healthy foods', desc:'Nuts, avocado, olive oil, and whole milk are calorie-dense without bulk — ideal for hitting targets.', tag:'Calorie Dense', tagBg:'#F3E5F5', tagColor:'#6A1B9A' },
+    { icon:'moon', bg:'#E3F2FD', title:'Sleep is when muscles are built', desc:'Aim for 7–9 hours nightly. Poor sleep elevates cortisol which actively breaks down muscle tissue.', tag:'Recovery', tagBg:'#E3F2FD', tagColor:'#1565C0' },
+    { didYouKnow: true, fact:'Creatine monohydrate increases strength and lean mass gains by 5–15% when combined with resistance training.' }
   ],
   healthy: [
-    { icon: '🥦', bg: '#D8F3DC', title: 'Fill half your plate with vegetables', desc: 'Non-starchy vegetables are low in calories and rich in fiber, vitamins, and antioxidants. Aim for 5 servings per day across a range of colors for maximum micronutrient coverage.', tag: 'General Health', tagBg: '#D8F3DC', tagColor: '#1B6B3A' },
-    { icon: '💧', bg: '#E3F2FD', title: 'Stay hydrated throughout the day', desc: 'Drinking 8–10 glasses of water daily supports metabolism, reduces false hunger signals, aids digestion, and improves cognitive performance throughout the day.', tag: 'Hydration', tagBg: '#E3F2FD', tagColor: '#1565C0' },
-    { icon: '🌾', bg: '#F3E5F5', title: 'Choose whole grains over refined carbs', desc: 'Whole grains like brown rice, oats, and quinoa provide sustained energy and a steady blood sugar level, reducing the risk of type 2 diabetes and cardiovascular disease.', tag: 'Carbohydrates', tagBg: '#F3E5F5', tagColor: '#6A1B9A' },
-    { icon: '🧂', bg: '#FCE4EC', title: 'Watch your sodium intake', desc: 'High sodium contributes to water retention and hypertension. Keep intake below 2,300 mg/day. Season meals with herbs, spices, lemon juice, or garlic instead of salt.', tag: 'Minerals', tagBg: '#FCE4EC', tagColor: '#880E4F' },
-    { didYouKnow: true, fact: 'The Mediterranean diet — rich in vegetables, fish, olive oil, and whole grains — is consistently ranked as one of the healthiest eating patterns in the world by nutritional scientists.' }
+    { icon:'salad', bg:'#D8F3DC', title:'Fill half your plate with vegetables', desc:'Aim for 5 servings of non-starchy vegetables daily across a range of colors for maximum micronutrients.', tag:'General Health', tagBg:'#D8F3DC', tagColor:'#1B6B3A' },
+    { icon:'droplets', bg:'#E3F2FD', title:'Stay hydrated throughout the day', desc:'8–10 glasses of water daily supports metabolism, reduces false hunger signals, and aids digestion.', tag:'Hydration', tagBg:'#E3F2FD', tagColor:'#1565C0' },
+    { icon:'wheat', bg:'#F3E5F5', title:'Choose whole grains over refined carbs', desc:'Whole grains reduce the risk of type 2 diabetes and cardiovascular disease through steady blood sugar.', tag:'Carbohydrates', tagBg:'#F3E5F5', tagColor:'#6A1B9A' },
+    { icon:'salt', bg:'#FCE4EC', title:'Watch your sodium intake', desc:'Keep below 2,300 mg/day. Season with herbs, spices, lemon juice, or garlic instead of salt.', tag:'Minerals', tagBg:'#FCE4EC', tagColor:'#880E4F' },
+    { didYouKnow: true, fact:'The Mediterranean diet is consistently ranked as one of the healthiest eating patterns in the world by nutritional scientists.' }
   ]
 };
 
@@ -704,8 +832,8 @@ function renderNutritionTips() {
   const panel = document.getElementById('nutrition-tips-panel');
   const badge = document.getElementById('tips-goal-badge');
 
-  const goalLabels = { lose: '🎯 Goal: Lose Weight', maintain: '🎯 Goal: Maintain Weight', gain: '🎯 Goal: Gain Muscle', healthy: '🎯 Goal: Eat Healthier' };
-  badge.textContent = goalLabels[goal] || '🎯 Your Goal';
+  const goalLabels = { lose:'Lose Weight', maintain:'Maintain Weight', gain:'Gain Muscle', healthy:'Eat Healthier' };
+  badge.textContent = '🎯 ' + (goalLabels[goal] || 'Your Goal');
   panel.querySelectorAll('.tip-card, .did-you-know').forEach(el => el.remove());
 
   tips.forEach(tip => {
@@ -718,15 +846,16 @@ function renderNutritionTips() {
       const card = document.createElement('div');
       card.className = 'tip-card';
       card.innerHTML = `
-        <div class="tip-icon" style="background:${tip.bg};">${tip.icon}</div>
+        <div class="tip-icon" style="background:${tip.bg}"><i data-lucide="${tip.icon}" width="18" height="18" style="color:${tip.tagColor}"></i></div>
         <div class="tip-body">
           <p class="tip-title">${tip.title}</p>
           <p class="tip-desc">${tip.desc}</p>
-          <span class="tip-tag" style="background:${tip.tagBg};color:${tip.tagColor};">${tip.tag}</span>
+          <span class="tip-tag" style="background:${tip.tagBg};color:${tip.tagColor}">${tip.tag}</span>
         </div>`;
       panel.appendChild(card);
     }
   });
+  if (window.lucide) lucide.createIcons();
 }
 
 // =============================================================================
@@ -743,6 +872,15 @@ function loadProfileForm() {
   document.getElementById('set-weight').value = USER.weight || '';
   document.getElementById('set-goal').value   = USER.goal   || 'maintain';
   document.getElementById('set-cals').value   = USER.cals   || 2000;
+
+  const init = getInitials(USER);
+  document.getElementById('prof-avatar-initials').textContent = init;
+  document.getElementById('prof-name').textContent  = USER.fname + ' ' + USER.lname;
+  document.getElementById('prof-email').textContent = USER.email;
+  const bmi = calcBMI(USER.height, USER.weight);
+  document.getElementById('prof-bmi').textContent = bmi;
+  document.getElementById('prof-wt').textContent  = USER.weight;
+  document.getElementById('prof-ht').textContent  = USER.height;
 }
 
 async function saveProfile() {
@@ -758,31 +896,46 @@ async function saveProfile() {
 
   await saveUserProfile(auth.currentUser.uid, USER);
   const init = getInitials(USER);
-  document.getElementById('nav-avatar').textContent  = init;
-  document.getElementById('prof-avatar').textContent = init;
+  document.getElementById('nav-avatar').textContent    = init;
+  document.getElementById('burger-avatar').textContent = init;
+  document.getElementById('burger-name').textContent   = USER.fname + ' ' + USER.lname;
   updateDashboard();
+  loadProfileForm();
   showToast('Profile saved successfully!');
 }
 
 // =============================================================================
+// INIT
+// =============================================================================
+
+initTheme();
+
+// =============================================================================
 // EXPOSE TO GLOBAL SCOPE
 // =============================================================================
-window.switchTab              = switchTab;
-window.doLogin                = doLogin;
-window.doRegister             = doRegister;
-window.doLogout               = doLogout;
-window.showPage               = showPage;
-window.logFood                = logFood;
-window.deleteEntry            = deleteEntry;
-window.saveProfile            = saveProfile;
+window.switchTab          = switchTab;
+window.doLogin            = doLogin;
+window.doRegister         = doRegister;
+window.doLogout           = doLogout;
+window.showPage           = showPage;
+window.logFood            = logFood;
+window.deleteEntry        = deleteEntry;
+window.saveProfile        = saveProfile;
 window.generateWeeklyInsights = generateWeeklyInsights;
-window.checkPassStrength      = checkPassStrength;
-window.checkPassMatch         = checkPassMatch;
-window.openTerms              = openTerms;
-window.closeTerms             = closeTerms;
-window.acceptTerms            = acceptTerms;
-window.otpMove                = otpMove;
-window.otpBack                = otpBack;
-window.verifyOTP              = verifyOTP;
-window.resendOTP              = resendOTP;
-window.closeOTP               = closeOTP;
+window.generateAIAdvice   = generateAIAdvice;
+window.checkPassStrength  = checkPassStrength;
+window.checkPassMatch     = checkPassMatch;
+window.checkGmail         = checkGmail;
+window.togglePass         = togglePass;
+window.toggleTheme        = toggleTheme;
+window.openBurger         = openBurger;
+window.closeBurger        = closeBurger;
+window.openTerms          = openTerms;
+window.closeTerms         = closeTerms;
+window.acceptTerms        = acceptTerms;
+window.otpMove            = otpMove;
+window.otpBack            = otpBack;
+window.verifyOTP          = verifyOTP;
+window.resendOTP          = resendOTP;
+window.closeOTP           = closeOTP;
+window.handleProfilePic   = handleProfilePic;
