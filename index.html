@@ -211,7 +211,6 @@
               <option value="male">Male</option>
               <option value="female">Female</option>
               <option value="other">Other</option>
-              <option value="prefer_not">Prefer not to say</option>
             </select>
           </div>
         </div>
@@ -317,17 +316,37 @@
     <!-- FOOD LOG PAGE -->
     <div class="page" id="page-log">
       <h1 class="page-title">Food Log</h1>
-      <p class="page-sub">Track everything you eat and get instant AI analysis</p>
+      <p class="page-sub">Snap a photo of your meal or type it in — AI will estimate the calories instantly</p>
+
       <div class="log-form">
         <div class="log-form-title">Log a Meal</div>
-        <div class="log-row">
-          <div class="field" style="margin:0">
-            <label>Food Item</label>
-            <div class="input-icon-wrap"><i data-lucide="utensils" width="16" height="16" class="input-icon"></i><input type="text" id="food-name" placeholder="e.g. Grilled chicken, Fried rice..."></div>
+
+        <!-- Photo Upload Zone -->
+        <div class="photo-upload-zone" id="photo-upload-zone" onclick="document.getElementById('food-photo-input').click()" ondragover="event.preventDefault()" ondrop="window.handlePhotoDrop(event)">
+          <input type="file" id="food-photo-input" accept="image/*" capture="environment" style="display:none" onchange="window.handleFoodPhoto(this)">
+          <div class="photo-upload-inner" id="photo-upload-inner">
+            <div class="photo-upload-icon">
+              <i data-lucide="camera" width="28" height="28"></i>
+            </div>
+            <div class="photo-upload-text">Tap to take a photo or upload food image</div>
+            <div class="photo-upload-hint">AI will automatically identify and estimate calories</div>
           </div>
+          <div class="photo-preview-wrap" id="photo-preview-wrap" style="display:none">
+            <img id="food-photo-preview" src="" alt="Food preview">
+            <button class="photo-remove-btn" onclick="window.clearFoodPhoto(event)" title="Remove photo">
+              <i data-lucide="x" width="14" height="14"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Food Name + Meal Row -->
+        <div class="log-row" style="margin-top:1rem">
           <div class="field" style="margin:0">
-            <label>Calories (est.)</label>
-            <div class="input-icon-wrap"><i data-lucide="zap" width="16" height="16" class="input-icon"></i><input type="number" id="food-cal" placeholder="350" min="0"></div>
+            <label>Food Name <span style="color:var(--muted);font-weight:400">(optional if photo uploaded)</span></label>
+            <div class="input-icon-wrap">
+              <i data-lucide="utensils" width="16" height="16" class="input-icon"></i>
+              <input type="text" id="food-name" placeholder="e.g. Grilled chicken, Fried rice...">
+            </div>
           </div>
           <div class="field" style="margin:0">
             <label>Meal Time</label>
@@ -340,21 +359,23 @@
           </div>
           <div class="field" style="margin:0;display:flex;align-items:flex-end">
             <button class="btn-primary btn-analyze" onclick="window.logFood()">
-              <i data-lucide="search" width="15" height="15"></i> Analyze &amp; Log
+              <i data-lucide="scan-line" width="15" height="15"></i> Analyze &amp; Log
             </button>
           </div>
         </div>
+
         <div id="analysis-area" style="display:none;margin-top:1rem">
           <div class="analysis-loading" id="analysis-loading"><div class="spinner"></div> Analyzing with AI...</div>
           <div class="analysis-box" id="analysis-result" style="display:none"></div>
         </div>
       </div>
+
       <h2 class="section-hd">Today's Log</h2>
       <div class="log-entries" id="log-entries">
         <div class="empty-state">
           <i data-lucide="utensils-crossed" width="40" height="40" style="color:var(--muted);margin-bottom:.8rem"></i>
           <div>No foods logged yet today</div>
-          <div class="empty-hint">Add your first meal above</div>
+          <div class="empty-hint">Take a photo or type your first meal above</div>
         </div>
       </div>
     </div>
@@ -433,7 +454,6 @@
                   <option value="male">Male</option>
                   <option value="female">Female</option>
                   <option value="other">Other</option>
-                  <option value="prefer_not">Prefer not to say</option>
                 </select>
               </div>
             </div>
