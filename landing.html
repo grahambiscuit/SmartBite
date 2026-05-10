@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartBite — Eat Smart, Live Better</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --green:       #1E6B45;
+      --green-light: #3DAB72;
+      --green-mid:   #52C78A;
+      --green-pale:  #D4F5E4;
+      --orange:      #F06B3F;
+      --yellow:      #FACC15;
+      --bg:          #F5F9F6;
+      --white:       #FFFFFF;
+      --text:        #111827;
+      --text2:       #374151;
+      --muted:       #6B7280;
+      --border:      #E5E7EB;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+    }
+
+    /* ===== NAV ===== */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 2rem;
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+      transition: box-shadow .3s;
+    }
+    nav.scrolled { box-shadow: 0 2px 20px rgba(0,0,0,0.08); }
+
+    .nav-logo {
+      font-family: 'Sora', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--green);
+      text-decoration: none;
+    }
+    .nav-logo span { color: var(--orange); }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      list-style: none;
+    }
+    .nav-links a {
+      text-decoration: none;
+      font-size: .9rem;
+      font-weight: 500;
+      color: var(--text2);
+      transition: color .2s;
+    }
+    .nav-links a:hover { color: var(--green); }
+
+    .nav-cta {
+      display: flex;
+      align-items: center;
+      gap: .8rem;
+    }
+    .btn-outline {
+      padding: .55rem 1.3rem;
+      border: 1.5px solid var(--green);
+      border-radius: 10px;
+      color: var(--green);
+      font-weight: 600;
+      font-size: .88rem;
+      text-decoration: none;
+      transition: all .2s;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .btn-outline:hover { background: var(--green); color: #fff; }
+    .btn-filled {
+      padding: .55rem 1.3rem;
+      background: var(--green);
+      border: 1.5px solid var(--green);
+      border-radius: 10px;
+      color: #fff;
+      font-weight: 600;
+      font-size: .88rem;
+      text-decoration: none;
+      transition: all .2s;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      cursor: pointer;
+    }
+    .btn-filled:hover { background: var(--green-light); border-color: var(--green-light); }
+
+    /* ===== HERO ===== */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      padding: 7rem 2rem 4rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero-bg {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(160deg, #E8F7EF 0%, #F5F9F6 40%, #FFF8F3 100%);
+      z-index: 0;
+    }
+    .hero-blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.35;
+      z-index: 0;
+    }
+    .hero-blob.b1 { width: 500px; height: 500px; background: #52C78A; top: -100px; right: -100px; }
+    .hero-blob.b2 { width: 300px; height: 300px; background: #F06B3F; bottom: -50px; left: 10%; }
+    .hero-blob.b3 { width: 200px; height: 200px; background: #FACC15; top: 30%; left: -50px; }
+
+    .hero-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4rem;
+      align-items: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--green-pale);
+      color: var(--green);
+      font-size: .78rem;
+      font-weight: 700;
+      padding: 5px 14px;
+      border-radius: 999px;
+      margin-bottom: 1.2rem;
+      letter-spacing: .3px;
+    }
+
+    .hero-title {
+      font-family: 'Sora', sans-serif;
+      font-size: 3.4rem;
+      font-weight: 800;
+      line-height: 1.1;
+      color: var(--text);
+      margin-bottom: 1.2rem;
+    }
+    .hero-title .accent { color: var(--green); }
+    .hero-title .accent-o { color: var(--orange); }
+
+    .hero-sub {
+      font-size: 1.05rem;
+      color: var(--text2);
+      line-height: 1.7;
+      margin-bottom: 2rem;
+      max-width: 480px;
+    }
+
+    .hero-btns {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 2.5rem;
+    }
+    .hero-btn-primary {
+      padding: .85rem 2rem;
+      background: linear-gradient(135deg, var(--green), var(--green-light));
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 8px 24px rgba(30,107,69,0.3);
+      transition: transform .2s, box-shadow .2s;
+    }
+    .hero-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(30,107,69,0.4); }
+
+    .hero-btn-secondary {
+      padding: .85rem 2rem;
+      background: transparent;
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text2);
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all .2s;
+    }
+    .hero-btn-secondary:hover { border-color: var(--green); color: var(--green); }
+
+    .hero-stats {
+      display: flex;
+      gap: 2rem;
+      align-items: center;
+    }
+    .hero-stat { text-align: left; }
+    .hero-stat-num {
+      font-family: 'Sora', sans-serif;
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: var(--text);
+    }
+    .hero-stat-lbl { font-size: .78rem; color: var(--muted); font-weight: 500; }
+    .hero-stat-div { width: 1px; height: 36px; background: var(--border); }
+
+    /* Hero Right — Mockup Card */
+    .hero-visual {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .hero-card {
+      background: white;
+      border-radius: 24px;
+      padding: 1.75rem;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.12);
+      width: 100%;
+      max-width: 360px;
+      position: relative;
+      z-index: 2;
+    }
+    .hero-card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 1.2rem;
+    }
+    .hero-card-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--green), var(--green-light));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+    }
+    .hero-card-title { font-weight: 700; font-size: .95rem; color: var(--text); }
+    .hero-card-sub { font-size: .75rem; color: var(--muted); }
+
+    .hero-food-photo {
+      width: 100%;
+      height: 150px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #D4F5E4, #A8EBC8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1.1rem;
+      font-size: 4rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero-food-photo::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 50%;
+      background: linear-gradient(to top, rgba(0,0,0,0.25), transparent);
+      border-radius: 0 0 14px 14px;
+    }
+    .photo-scan-line {
+      position: absolute;
+      left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--green-light), transparent);
+      animation: scanline 2s ease-in-out infinite;
+      z-index: 1;
+    }
+    @keyframes scanline {
+      0% { top: 10%; opacity: 1; }
+      100% { top: 90%; opacity: 0; }
+    }
+
+    .hero-result-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg);
+      border-radius: 10px;
+      padding: .7rem 1rem;
+      margin-bottom: .6rem;
+    }
+    .hero-result-label { font-size: .82rem; font-weight: 600; color: var(--text); }
+    .hero-result-val { font-size: .82rem; font-weight: 700; color: var(--green); }
+    .hero-result-badge {
+      font-size: .72rem;
+      font-weight: 600;
+      padding: 2px 10px;
+      border-radius: 999px;
+      background: var(--green-pale);
+      color: var(--green);
+    }
+
+    .hero-card-float {
+      position: absolute;
+      background: white;
+      border-radius: 16px;
+      padding: .8rem 1rem;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+      font-size: .78rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+      z-index: 3;
+    }
+    .hero-card-float.f1 { top: -20px; left: -30px; color: var(--orange); }
+    .hero-card-float.f2 { bottom: -20px; right: -20px; color: var(--green); }
+    .float-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+    /* ===== FEATURES ===== */
+    .section {
+      padding: 6rem 2rem;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      text-align: center;
+      display: inline-block;
+      background: var(--green-pale);
+      color: var(--green);
+      font-size: .78rem;
+      font-weight: 700;
+      padding: 4px 14px;
+      border-radius: 999px;
+      letter-spacing: .4px;
+      margin-bottom: .8rem;
+    }
+    .section-wrapper { text-align: center; margin-bottom: 3.5rem; }
+    .section-title {
+      font-family: 'Sora', sans-serif;
+      font-size: 2.4rem;
+      font-weight: 800;
+      color: var(--text);
+      line-height: 1.2;
+      margin-bottom: .75rem;
+    }
+    .section-desc { font-size: 1rem; color: var(--muted); max-width: 540px; margin: 0 auto; line-height: 1.7; }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+    }
+    .feature-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 1.75rem;
+      transition: transform .25s, box-shadow .25s;
+    }
+    .feature-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 16px 48px rgba(0,0,0,0.08);
+    }
+    .feature-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1.2rem;
+      font-size: 1.4rem;
+    }
+    .feature-title {
+      font-family: 'Sora', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: .5rem;
+    }
+    .feature-desc { font-size: .88rem; color: var(--muted); line-height: 1.65; }
+
+    /* ===== HOW IT WORKS ===== */
+    .how-section {
+      padding: 6rem 2rem;
+      background: linear-gradient(135deg, #1B4332 0%, #2D6A4F 100%);
+    }
+    .how-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .how-section .section-label { background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.9); }
+    .how-section .section-title { color: white; }
+    .how-section .section-desc { color: rgba(255,255,255,0.7); }
+
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2rem;
+      margin-top: 3.5rem;
+      position: relative;
+    }
+    .steps-grid::before {
+      content: '';
+      position: absolute;
+      top: 32px;
+      left: calc(16.67% + 20px);
+      right: calc(16.67% + 20px);
+      height: 1px;
+      background: rgba(255,255,255,0.2);
+    }
+    .step-card { text-align: center; }
+    .step-num {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.15);
+      border: 2px solid rgba(255,255,255,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1.25rem;
+      font-family: 'Sora', sans-serif;
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: white;
+      position: relative;
+      z-index: 1;
+    }
+    .step-title {
+      font-family: 'Sora', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: white;
+      margin-bottom: .5rem;
+    }
+    .step-desc { font-size: .88rem; color: rgba(255,255,255,0.7); line-height: 1.6; }
+
+
+
+    /* ===== CTA BANNER ===== */
+    .cta-section {
+      padding: 6rem 2rem;
+      text-align: center;
+    }
+    .cta-inner {
+      max-width: 680px;
+      margin: 0 auto;
+    }
+    .cta-title {
+      font-family: 'Sora', sans-serif;
+      font-size: 2.6rem;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 1rem;
+      line-height: 1.2;
+    }
+    .cta-title span { color: var(--green); }
+    .cta-sub { font-size: 1rem; color: var(--muted); margin-bottom: 2rem; line-height: 1.65; }
+    .cta-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 1rem 2.4rem;
+      background: linear-gradient(135deg, var(--green), var(--green-light));
+      color: white;
+      border: none;
+      border-radius: 14px;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      box-shadow: 0 10px 32px rgba(30,107,69,0.35);
+      transition: transform .2s, box-shadow .2s;
+    }
+    .cta-btn:hover { transform: translateY(-3px); box-shadow: 0 16px 40px rgba(30,107,69,0.45); }
+    .cta-note { font-size: .8rem; color: var(--muted); margin-top: 1rem; }
+
+    /* ===== FOOTER ===== */
+    footer {
+      background: #111827;
+      color: rgba(255,255,255,0.6);
+      padding: 3rem 2rem;
+      text-align: center;
+    }
+    .footer-logo {
+      font-family: 'Sora', sans-serif;
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: white;
+      margin-bottom: .5rem;
+    }
+    .footer-logo span { color: var(--green-mid); }
+    .footer-text { font-size: .82rem; }
+    .footer-links { display: flex; justify-content: center; gap: 1.5rem; margin: 1rem 0; }
+    .footer-links a { color: rgba(255,255,255,0.5); text-decoration: none; font-size: .82rem; transition: color .2s; }
+    .footer-links a:hover { color: var(--green-mid); }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 900px) {
+      .hero-inner { grid-template-columns: 1fr; text-align: center; gap: 2.5rem; }
+      .hero-title { font-size: 2.4rem; }
+      .hero-sub { margin: 0 auto 2rem; }
+      .hero-btns { justify-content: center; }
+      .hero-stats { justify-content: center; }
+      .hero-visual { display: none; }
+      .features-grid { grid-template-columns: 1fr 1fr; }
+      .steps-grid { grid-template-columns: 1fr; }
+      .steps-grid::before { display: none; }
+      .nav-links { display: none; }
+    }
+    @media (max-width: 600px) {
+      .features-grid { grid-template-columns: 1fr; }
+      .hero-title { font-size: 2rem; }
+      .section-title { font-size: 1.8rem; }
+      .cta-title { font-size: 1.9rem; }
+    }
+
+    /* Scroll animations */
+    .fade-up {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity .6s ease, transform .6s ease;
+    }
+    .fade-up.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav id="main-nav">
+  <a href="landing.html" class="nav-logo">Smart<span>Bite</span></a>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#how">How it Works</a></li>
+  </ul>
+  <div class="nav-cta">
+    <a href="index.html" class="btn-outline">Sign In</a>
+    <a href="index.html" class="btn-filled">Get Started Free</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-blob b1"></div>
+  <div class="hero-blob b2"></div>
+  <div class="hero-blob b3"></div>
+
+  <div class="hero-inner">
+    <!-- LEFT -->
+    <div class="hero-left">
+      <div class="hero-badge">
+        <i data-lucide="zap" width="13" height="13"></i>
+        AI-Powered Nutrition Tracking
+      </div>
+      <h1 class="hero-title">
+        Snap a Meal,<br>
+        <span class="accent">Know Your</span><br>
+        <span class="accent-o">Calories Instantly</span>
+      </h1>
+      <p class="hero-sub">
+        SmartBite uses AI to identify your food from a photo, calculate calories automatically, and give you personalized nutrition advice — no manual entry needed.
+      </p>
+      <div class="hero-btns">
+        <a href="index.html" class="hero-btn-primary">
+          <i data-lucide="camera" width="18" height="18"></i>
+          Start Tracking Free
+        </a>
+        <a href="#how" class="hero-btn-secondary">
+          <i data-lucide="play-circle" width="18" height="18"></i>
+          See How It Works
+        </a>
+      </div>
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <div class="hero-stat-num">10K+</div>
+          <div class="hero-stat-lbl">Users Tracking</div>
+        </div>
+        <div class="hero-stat-div"></div>
+        <div class="hero-stat">
+          <div class="hero-stat-num">98%</div>
+          <div class="hero-stat-lbl">Accuracy Rate</div>
+        </div>
+        <div class="hero-stat-div"></div>
+        <div class="hero-stat">
+          <div class="hero-stat-num">500+</div>
+          <div class="hero-stat-lbl">Foods Recognized</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT — Visual -->
+    <div class="hero-visual">
+      <div class="hero-card-float f1">
+        <div class="float-dot" style="background:var(--orange)"></div>
+        📷 Photo analyzed!
+      </div>
+      <div class="hero-card">
+        <div class="hero-card-header">
+          <div class="hero-card-icon">
+            <i data-lucide="scan-line" width="20" height="20"></i>
+          </div>
+          <div>
+            <div class="hero-card-title">AI Food Analyzer</div>
+            <div class="hero-card-sub">Take photo → get instant results</div>
+          </div>
+        </div>
+        <div class="hero-food-photo">
+          <div class="photo-scan-line"></div>
+          🍱
+        </div>
+        <div class="hero-result-row">
+          <span class="hero-result-label">Identified Food</span>
+          <span class="hero-result-val">Chicken Rice Bowl</span>
+        </div>
+        <div class="hero-result-row">
+          <span class="hero-result-label">Calories</span>
+          <span class="hero-result-val">487 kcal</span>
+        </div>
+        <div class="hero-result-row">
+          <span class="hero-result-label">Rating</span>
+          <span class="hero-result-badge">✓ Healthy</span>
+        </div>
+      </div>
+      <div class="hero-card-float f2">
+        <div class="float-dot" style="background:var(--green)"></div>
+        Goal: 87% achieved today
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="section" id="features">
+  <div class="section-wrapper fade-up">
+    <span class="section-label">Why SmartBite</span>
+    <h2 class="section-title">Everything you need to eat smarter</h2>
+    <p class="section-desc">From photo-based calorie detection to AI-generated nutrition advice tailored specifically for your body and goals.</p>
+  </div>
+
+  <div class="features-grid">
+    <div class="feature-card fade-up">
+      <div class="feature-icon" style="background:#D4F5E4">📷</div>
+      <div class="feature-title">Photo Calorie Detection</div>
+      <div class="feature-desc">Snap a picture of any meal and our AI instantly identifies the food and calculates the calories — no typing required.</div>
+    </div>
+    <div class="feature-card fade-up" style="transition-delay:.1s">
+      <div class="feature-icon" style="background:#FEF9C3">🧠</div>
+      <div class="feature-title">Personalized AI Advice</div>
+      <div class="feature-desc">Get nutrition recommendations tailored to your BMI, age, gender, and specific health goals — generated fresh every time.</div>
+    </div>
+    <div class="feature-card fade-up" style="transition-delay:.2s">
+      <div class="feature-icon" style="background:#FEE2E2">🎯</div>
+      <div class="feature-title">Goal-Based Tracking</div>
+      <div class="feature-desc">Whether you want to lose weight, gain muscle, or simply eat healthier — SmartBite adapts tips and calorie targets to your goal.</div>
+    </div>
+    <div class="feature-card fade-up" style="transition-delay:.3s">
+      <div class="feature-icon" style="background:#DBEAFE">📊</div>
+      <div class="feature-title">BMI Dashboard</div>
+      <div class="feature-desc">Track your BMI, daily calorie intake, healthy eating ratio, and logging streaks all in one beautiful dashboard.</div>
+    </div>
+    <div class="feature-card fade-up" style="transition-delay:.4s">
+      <div class="feature-icon" style="background:#F3E8FF">🔥</div>
+      <div class="feature-title">Weekly Insights</div>
+      <div class="feature-desc">Review your nutrition patterns weekly with AI-generated summaries that highlight what you're doing well and what to improve.</div>
+    </div>
+    <div class="feature-card fade-up" style="transition-delay:.5s">
+      <div class="feature-icon" style="background:#FFF7ED">🔒</div>
+      <div class="feature-title">Secure & Private</div>
+      <div class="feature-desc">Your data is stored securely with Firebase and protected by email OTP verification. We never sell your information.</div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<div class="how-section" id="how">
+  <div class="how-inner">
+    <div class="section-wrapper fade-up">
+      <span class="section-label">How It Works</span>
+      <h2 class="section-title">Three steps to smarter eating</h2>
+      <p class="section-desc">Get started in seconds. No complicated setup, no manual calorie counting.</p>
+    </div>
+    <div class="steps-grid">
+      <div class="step-card fade-up">
+        <div class="step-num">1</div>
+        <div class="step-title">Create Your Profile</div>
+        <div class="step-desc">Enter your age, height, weight, and health goal. SmartBite calculates your personalized daily calorie target instantly.</div>
+      </div>
+      <div class="step-card fade-up" style="transition-delay:.15s">
+        <div class="step-num">2</div>
+        <div class="step-title">Snap Your Meals</div>
+        <div class="step-desc">Take a photo of your food. Our AI identifies what you're eating and automatically estimates the calorie count — accurately.</div>
+      </div>
+      <div class="step-card fade-up" style="transition-delay:.3s">
+        <div class="step-num">3</div>
+        <div class="step-title">Get Smart Advice</div>
+        <div class="step-desc">Receive personalized nutrition tips and AI-generated advice based on your actual eating habits and progress toward your goal.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TESTIMONIALS -->
+
+
+<!-- CTA -->
+<section class="cta-section">
+  <div class="cta-inner fade-up">
+    <h2 class="cta-title">Ready to <span>eat smarter</span> every day?</h2>
+    <p class="cta-sub">Join thousands of users who track their nutrition effortlessly with AI-powered photo analysis and personalized advice.</p>
+    <a href="index.html" class="cta-btn">
+      <i data-lucide="camera" width="20" height="20"></i>
+      Start Free — No Credit Card Needed
+    </a>
+    <p class="cta-note">Free forever · Powered by AI · Takes 2 minutes to set up</p>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">Smart<span>Bite</span></div>
+  <div class="footer-links">
+    <a href="#features">Features</a>
+    <a href="#how">How It Works</a>
+    <a href="index.html">Sign In</a>
+    <a href="index.html">Register</a>
+  </div>
+  <div class="footer-text">© 2026 SmartBite. All rights reserved. · Not a substitute for professional medical advice.</div>
+</footer>
+
+<script>
+  // Icons
+  lucide.createIcons();
+
+  // Nav shadow on scroll
+  const nav = document.getElementById('main-nav');
+  window.addEventListener('scroll', () => {
+    nav.classList.toggle('scrolled', window.scrollY > 20);
+  });
+
+  // Scroll-triggered fade-up
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+  }, { threshold: 0.12 });
+  document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
