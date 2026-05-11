@@ -37,7 +37,7 @@ const EMAILJS_PUBLIC_KEY  = 'koTFYwKltn5wUm99V';
    Get your key at: https://aistudio.google.com
    Click "Get API Key" → Create API Key → paste it below.               */
 const GEMINI_API_KEY = 'AIzaSyAobccY5FLv3Upakld_A7W83YSmDY8vKk4';
-const GEMINI_MODEL   = 'gemini-1.5-flash';   // free, fast, supports images
+const GEMINI_MODEL   = 'gemini-2.0-flash';   // free, fast, supports images
 
 /* ── Global State ── */
 let USER              = null;
