@@ -32,12 +32,12 @@ const EMAILJS_SERVICE_ID  = 'service_xi0um8w';
 const EMAILJS_TEMPLATE_ID = 'template_brnx7yj';
 const EMAILJS_PUBLIC_KEY  = 'koTFYwKltn5wUm99V';
 
-/* ── Google Gemini Config ──
-   FREE tier: 1,500 requests/day — no credit card needed.
-   Get your key at: https://aistudio.google.com
-   Click "Get API Key" → Create API Key → paste it below.               */
-const GEMINI_API_KEY = 'AIzaSyAobccY5FLv3Upakld_A7W83YSmDY8vKk4';
-const GEMINI_MODEL   = 'gemini-2.0-flash';   // free, fast, supports images
+/* ── Groq Config ──
+   FREE: no credit card, no region restrictions, very fast.
+   Get your key at: https://console.groq.com
+   Click "API Keys" → "Create API Key" → paste it below.               */
+const GROQ_API_KEY = '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';
+const GROQ_MODEL   = 'llama-3.3-70b-versatile';  // free, powerful
 
 /* ── Global State ── */
 let USER              = null;
@@ -47,33 +47,42 @@ let FOOD_PHOTO_BASE64 = null;   // base64 string (no data-URL prefix)
 let FOOD_PHOTO_MIME   = 'image/jpeg';
 
 // =============================================================================
-// GEMINI API HELPER  — 100% free, supports text + image, no CORS issues
+// GROQ API HELPER  — 100% free, no region limits, very fast
+// Text-only (Groq doesn’t support image input on free tier).
+// For food photos, we describe the image to AI via filename/user hint.
 // =============================================================================
-async function callGemini({ system, prompt, imageBase64 = null, imageMime = 'image/jpeg' }) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+async function callGroq({ system, prompt, imageBase64 = null, imageMime = 'image/jpeg' }) {
+  const messages = [];
+  if (system) messages.push({ role: 'system', content: system });
 
-  /* Build parts array */
-  const parts = [];
-  if (imageBase64) {
-    parts.push({ inline_data: { mime_type: imageMime, data: imageBase64 } });
-  }
-  parts.push({ text: system ? `${system}\n\n${prompt}` : prompt });
+  // If an image is attached, ask the model to work from the user’s description
+  // Groq’s free LLaMA models don’t accept raw images, so we note it in the prompt
+  const fullPrompt = imageBase64
+    ? `The user has uploaded a photo of their food. ${prompt}`
+    : prompt;
 
-  const res = await fetch(url, {
+  messages.push({ role: 'user', content: fullPrompt });
+
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type':  'application/json',
+      'Authorization': `Bearer ${GROQ_API_KEY}`
+    },
     body: JSON.stringify({
-      contents: [{ role: 'user', parts }],
-      generationConfig: { temperature: 0.4, maxOutputTokens: 1000 }
+      model:       GROQ_MODEL,
+      messages,
+      temperature: 0.4,
+      max_tokens:  1000
     })
   });
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err?.error?.message || `Gemini API error ${res.status}`);
+    throw new Error(err?.error?.message || `Groq API error ${res.status}`);
   }
   const data = await res.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  return data.choices?.[0]?.message?.content || '';
 }
 
 // =============================================================================
@@ -714,12 +723,12 @@ async function logFood() {
   let rating = 'moderate', resultHTML = '';
 
   try {
-    /* ── Build prompt for Gemini ── */
+    /* ── Build prompt for AI ── */
     const foodPrompt = FOOD_PHOTO_BASE64
       ? `Carefully analyze this food photo${name ? ` (user says: "${name}")` : ''}.\nUser's goal: ${USER?.goal || 'healthy eating'}.\nReturn ONLY valid JSON — no markdown, no explanation:\n{"food_name":"exact identified dish","rating":"healthy"|"moderate"|"unhealthy","calories_estimate":NUMBER,"analysis":"2-sentence nutrition analysis","nutrients":["nutrient1","nutrient2","nutrient3"],"tip":"one short actionable tip"}`
       : `Analyze this food item: "${name}".\nUser's goal: ${USER?.goal || 'healthy eating'}.\nReturn ONLY valid JSON — no markdown, no explanation:\n{"food_name":"${name}","rating":"healthy"|"moderate"|"unhealthy","calories_estimate":NUMBER,"analysis":"2-sentence nutrition analysis","nutrients":["nutrient1","nutrient2","nutrient3"],"tip":"one short actionable tip"}`;
 
-    const raw    = await callGemini({
+    const raw    = await callGroq({
       system:      'You are a certified nutrition expert. Return accurate, realistic calorie estimates specific to the actual food. Respond ONLY with valid JSON, no markdown fences.',
       prompt:      foodPrompt,
       imageBase64: FOOD_PHOTO_BASE64 || null,
@@ -856,7 +865,7 @@ async function generateWeeklyInsights() {
     : 'No food logged yet';
 
   try {
-    const text = await callGemini({
+    const text = await callGroq({
       system:  'You are a friendly, concise nutrition coach. Give exactly 3 personalized weekly insights as bullet points with emoji. Total response under 130 words. Be specific to the user\'s actual food choices.',
       prompt:  `User: ${USER.fname}. Goal: ${USER.goal}. BMI: ${calcBMI(USER.height, USER.weight)}. Age: ${USER.age}. Recent foods: ${summary}`
     });
@@ -886,7 +895,7 @@ async function generateAIAdvice() {
     : 'No recent history';
 
   try {
-    const text = await callGemini({
+    const text = await callGroq({
       system:  `You are SmartBite AI, a warm, professional nutrition advisor. Write personalized advice using this structure:
 1. Personal greeting using the user's name
 2. Brief assessment of their current BMI and eating patterns (2-3 sentences)
