@@ -37,12 +37,9 @@ const EMAILJS_PUBLIC_KEY  = 'koTFYwKltn5wUm99V';
    Get your key at: https://console.groq.com
    Click "API Keys" → "Create API Key" → paste it below.               */
 const GROQ_API_KEY  = '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';
-const GROQ_MODEL    = 'llama-3.3-70b-versatile';  // free, powerful, text-only
+const GROQ_MODEL    = 'llama-3.3-70b-versatile';  // text features
+const GROQ_VISION_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct'; // free + supports images
 
-/* ── Gemini Vision Config (for food photo analysis only) ──
-   Free: 15 requests/min, 1500/day on gemini-1.5-flash                        */
-const GEMINI_API_KEY = 'AIzaSyAobccY5FLv3Upakld_A7W83YSmDY8vKk4';
-const GEMINI_VISION_MODEL = 'gemini-2.0-flash-exp';
 
 /* ── Global State ── */
 let USER              = null;
@@ -91,31 +88,41 @@ async function callGroq({ system, prompt, imageBase64 = null, imageMime = 'image
 }
 
 // =============================================================================
-// GEMINI VISION HELPER  — used ONLY for food photo analysis
-// Sends the actual image bytes so AI can truly see and identify the food
+// GROQ VISION HELPER  — uses llama-4-scout which supports image input for free
+// Sends the actual image so AI truly sees and identifies the food
 // =============================================================================
 async function callGeminiVision({ prompt, imageBase64, imageMime = 'image/jpeg' }) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_VISION_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
-  const res = await fetch(url, {
+  const dataUrl = `data:${imageMime};base64,${imageBase64}`;
+  const messages = [
+    {
+      role: 'user',
+      content: [
+        { type: 'image_url', image_url: { url: dataUrl } },
+        { type: 'text',      text: prompt }
+      ]
+    }
+  ];
+
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type':  'application/json',
+      'Authorization': `Bearer ${GROQ_API_KEY}`
+    },
     body: JSON.stringify({
-      contents: [{
-        role: 'user',
-        parts: [
-          { inline_data: { mime_type: imageMime, data: imageBase64 } },
-          { text: prompt }
-        ]
-      }],
-      generationConfig: { temperature: 0.2, maxOutputTokens: 600 }
+      model:       GROQ_VISION_MODEL,
+      messages,
+      temperature: 0.2,
+      max_tokens:  600
     })
   });
+
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err?.error?.message || `Vision API error ${res.status}`);
+    throw new Error(err?.error?.message || `Groq Vision error ${res.status}`);
   }
   const data = await res.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  return data.choices?.[0]?.message?.content || '';
 }
 
 // =============================================================================
@@ -738,8 +745,8 @@ function generateDashTips(logs, cals, target, bmi) {
 
 // =============================================================================
 // FOOD LOG  —  PHOTO-FIRST AI ANALYSIS
-// Photo → Gemini Vision (actually sees the image, no typing needed)
-// Text only → Groq (fast text analysis)
+// Photo → Groq llama-4-scout Vision (actually sees the image, no typing needed)
+// Text only → Groq llama-3.3 (fast text analysis)
 // =============================================================================
 async function logFood() {
   const name = document.getElementById('food-name').value.trim();
@@ -761,7 +768,7 @@ async function logFood() {
     let raw;
 
     if (FOOD_PHOTO_BASE64) {
-      /* ── PHOTO MODE: Gemini Vision actually sees the image ── */
+      /* ── PHOTO MODE: Groq Vision actually sees the image ── */
       const visionPrompt = `You are a certified nutrition expert and food recognition AI.
 Look at this food photo carefully and identify exactly what food is shown.
 ${name ? `The user hints it might be: "${name}".` : 'Identify the food yourself from the image alone.'}
