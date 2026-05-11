@@ -36,8 +36,13 @@ const EMAILJS_PUBLIC_KEY  = 'koTFYwKltn5wUm99V';
    FREE: no credit card, no region restrictions, very fast.
    Get your key at: https://console.groq.com
    Click "API Keys" → "Create API Key" → paste it below.               */
-const GROQ_API_KEY = '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';
-const GROQ_MODEL   = 'llama-3.3-70b-versatile';  // free, powerful
+const GROQ_API_KEY  = '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';
+const GROQ_MODEL    = 'llama-3.3-70b-versatile';  // free, powerful, text-only
+
+/* ── Gemini Vision Config (for food photo analysis only) ──
+   Free: 15 requests/min, 1500/day on gemini-1.5-flash                        */
+const GEMINI_API_KEY = 'AIzaSyAobccY5FLv3Upakld_A7W83YSmDY8vKk4';
+const GEMINI_VISION_MODEL = 'gemini-1.5-flash-latest';
 
 /* ── Global State ── */
 let USER              = null;
@@ -83,6 +88,34 @@ async function callGroq({ system, prompt, imageBase64 = null, imageMime = 'image
   }
   const data = await res.json();
   return data.choices?.[0]?.message?.content || '';
+}
+
+// =============================================================================
+// GEMINI VISION HELPER  — used ONLY for food photo analysis
+// Sends the actual image bytes so AI can truly see and identify the food
+// =============================================================================
+async function callGeminiVision({ prompt, imageBase64, imageMime = 'image/jpeg' }) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_VISION_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+  const res = await fetch(url, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{
+        role: 'user',
+        parts: [
+          { inline_data: { mime_type: imageMime, data: imageBase64 } },
+          { text: prompt }
+        ]
+      }],
+      generationConfig: { temperature: 0.2, maxOutputTokens: 600 }
+    })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error?.message || `Vision API error ${res.status}`);
+  }
+  const data = await res.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 }
 
 // =============================================================================
@@ -705,6 +738,8 @@ function generateDashTips(logs, cals, target, bmi) {
 
 // =============================================================================
 // FOOD LOG  —  PHOTO-FIRST AI ANALYSIS
+// Photo → Gemini Vision (actually sees the image, no typing needed)
+// Text only → Groq (fast text analysis)
 // =============================================================================
 async function logFood() {
   const name = document.getElementById('food-name').value.trim();
@@ -723,17 +758,36 @@ async function logFood() {
   let rating = 'moderate', resultHTML = '';
 
   try {
-    /* ── Build prompt for AI ── */
-    const foodPrompt = FOOD_PHOTO_BASE64
-      ? `Carefully analyze this food photo${name ? ` (user says: "${name}")` : ''}.\nUser's goal: ${USER?.goal || 'healthy eating'}.\nReturn ONLY valid JSON — no markdown, no explanation:\n{"food_name":"exact identified dish","rating":"healthy"|"moderate"|"unhealthy","calories_estimate":NUMBER,"analysis":"2-sentence nutrition analysis","nutrients":["nutrient1","nutrient2","nutrient3"],"tip":"one short actionable tip"}`
-      : `Analyze this food item: "${name}".\nUser's goal: ${USER?.goal || 'healthy eating'}.\nReturn ONLY valid JSON — no markdown, no explanation:\n{"food_name":"${name}","rating":"healthy"|"moderate"|"unhealthy","calories_estimate":NUMBER,"analysis":"2-sentence nutrition analysis","nutrients":["nutrient1","nutrient2","nutrient3"],"tip":"one short actionable tip"}`;
+    let raw;
 
-    const raw    = await callGroq({
-      system:      'You are a certified nutrition expert. Return accurate, realistic calorie estimates specific to the actual food. Respond ONLY with valid JSON, no markdown fences.',
-      prompt:      foodPrompt,
-      imageBase64: FOOD_PHOTO_BASE64 || null,
-      imageMime:   FOOD_PHOTO_MIME
-    });
+    if (FOOD_PHOTO_BASE64) {
+      /* ── PHOTO MODE: Gemini Vision actually sees the image ── */
+      const visionPrompt = `You are a certified nutrition expert and food recognition AI.
+Look at this food photo carefully and identify exactly what food is shown.
+${name ? `The user hints it might be: "${name}".` : 'Identify the food yourself from the image alone.'}
+User goal: ${USER?.goal || 'healthy eating'}.
+
+Return ONLY valid JSON, no markdown, no explanation:
+{"food_name":"exact name of the food you see","rating":"healthy" or "moderate" or "unhealthy","calories_estimate":REALISTIC_NUMBER,"analysis":"2-sentence nutrition analysis of this specific food","nutrients":["main nutrient 1","main nutrient 2","main nutrient 3"],"tip":"one short actionable tip for this food"}`;
+
+      raw = await callGeminiVision({
+        prompt:      visionPrompt,
+        imageBase64: FOOD_PHOTO_BASE64,
+        imageMime:   FOOD_PHOTO_MIME
+      });
+
+    } else {
+      /* ── TEXT MODE: Groq analyses by food name ── */
+      const textPrompt = `Analyze this food item: "${name}".
+User goal: ${USER?.goal || 'healthy eating'}.
+Return ONLY valid JSON, no markdown, no explanation:
+{"food_name":"${name}","rating":"healthy" or "moderate" or "unhealthy","calories_estimate":REALISTIC_NUMBER,"analysis":"2-sentence nutrition analysis","nutrients":["nutrient1","nutrient2","nutrient3"],"tip":"one short actionable tip"}`;
+
+      raw = await callGroq({
+        system: 'You are a certified nutrition expert. Return accurate, realistic calorie estimates. Respond ONLY with valid JSON, no markdown fences.',
+        prompt: textPrompt
+      });
+    }
 
     const parsed   = safeParseJSON(raw);
     rating         = parsed.rating || 'moderate';
