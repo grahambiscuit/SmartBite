@@ -42,7 +42,7 @@ const GROQ_MODEL    = 'llama-3.3-70b-versatile';  // free, powerful, text-only
 /* ── Gemini Vision Config (for food photo analysis only) ──
    Free: 15 requests/min, 1500/day on gemini-1.5-flash                        */
 const GEMINI_API_KEY = 'AIzaSyAobccY5FLv3Upakld_A7W83YSmDY8vKk4';
-const GEMINI_VISION_MODEL = 'gemini-1.5-flash';
+const GEMINI_VISION_MODEL = 'gemini-2.0-flash-exp';
 
 /* ── Global State ── */
 let USER              = null;
@@ -95,7 +95,7 @@ async function callGroq({ system, prompt, imageBase64 = null, imageMime = 'image
 // Sends the actual image bytes so AI can truly see and identify the food
 // =============================================================================
 async function callGeminiVision({ prompt, imageBase64, imageMime = 'image/jpeg' }) {
-  const url = `https://generativelanguage.googleapis.com/v1/models/${GEMINI_VISION_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_VISION_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
   const res = await fetch(url, {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
