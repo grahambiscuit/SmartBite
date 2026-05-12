@@ -624,10 +624,22 @@ function showPage(p) {
   document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
   document.getElementById('page-' + p).classList.add('active');
   updateBurgerActive(p);
+  updateBottomNav(p);
   if (p === 'dashboard')       updateDashboard();
   if (p === 'recommendations') { generateWeeklyInsights(); renderNutritionTips(); }
   if (p === 'log')             renderLogEntries();
+  // Scroll to top on page change (mobile)
+  const main = document.getElementById('main-content');
+  if (main) main.scrollTop = 0;
+  window.scrollTo(0, 0);
   if (window.lucide) lucide.createIcons();
+}
+
+function updateBottomNav(p) {
+  ['dashboard','log','recommendations','profile'].forEach(name => {
+    const btn = document.getElementById('bn-' + name);
+    if (btn) btn.classList.toggle('active', name === p);
+  });
 }
 
 // =============================================================================
