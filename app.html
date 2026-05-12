@@ -2,7 +2,7 @@
 <html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>SmartBite — Your Nutrition Companion</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/lucide.min.css">
@@ -250,7 +250,7 @@
     </div>
   </nav>
 
-  <div class="main">
+  <div class="main main-with-bnav" id="main-content">
 
     <!-- DASHBOARD PAGE -->
     <div class="page active" id="page-dashboard">
@@ -482,6 +482,28 @@
     </div>
 
   </div><!-- /.main -->
+
+  <!-- BOTTOM NAV — mobile only -->
+  <div class="bottom-nav" id="bottom-nav">
+    <div class="bottom-nav-inner">
+      <button class="bn-item active" id="bn-dashboard" onclick="window.showPage('dashboard')">
+        <div class="bn-item-icon"><i data-lucide="layout-dashboard" width="22" height="22"></i></div>
+        <span>Home</span>
+      </button>
+      <button class="bn-item" id="bn-log" onclick="window.showPage('log')">
+        <div class="bn-item-icon"><i data-lucide="camera" width="22" height="22"></i></div>
+        <span>Log Food</span>
+      </button>
+      <button class="bn-item" id="bn-recommendations" onclick="window.showPage('recommendations')">
+        <div class="bn-item-icon"><i data-lucide="lightbulb" width="22" height="22"></i></div>
+        <span>Advice</span>
+      </button>
+      <button class="bn-item" id="bn-profile" onclick="window.showPage('profile')">
+        <div class="bn-item-icon"><i data-lucide="user" width="22" height="22"></i></div>
+        <span>Profile</span>
+      </button>
+    </div>
+  </div>
 </div><!-- /#app-screen -->
 
 <div class="toast" id="toast"></div>
