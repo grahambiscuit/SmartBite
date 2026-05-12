@@ -626,7 +626,7 @@ function showPage(p) {
   updateBurgerActive(p);
   updateBottomNav(p);
   if (p === 'dashboard')       updateDashboard();
-  if (p === 'recommendations') { generateWeeklyInsights(); renderNutritionTips(); }
+  if (p === 'recommendations') { renderNutritionTips(); }
   if (p === 'log')             renderLogEntries();
   // Scroll to top on page change (mobile)
   const main = document.getElementById('main-content');
@@ -704,12 +704,6 @@ function updateDashboard() {
       </div>`).join('');
   }
 
-  const recoTips = generateDashTips(todayLogs, totalCals, target, +bmi);
-  document.getElementById('dash-recos').innerHTML = recoTips.map(t => `
-    <div class="reco-card">
-      <div class="reco-icon">${t.iconSvg}</div>
-      <div class="reco-text"><strong>${t.title}</strong>${t.msg}</div>
-    </div>`).join('');
 
   /* sync profile sidebar */
   document.getElementById('prof-bmi').textContent   = bmi;
