@@ -863,7 +863,299 @@ nav {
 .main-with-bnav { padding-bottom: calc(60px + env(safe-area-inset-bottom) + 1rem); }
 
 /* =============================================
-   RESPONSIVE — TABLET (max 900px)
+   NOTIFICATION BELL + PANEL
+   ============================================= */
+.notif-btn {
+  position: relative;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  transition: background .2s;
+  -webkit-tap-highlight-color: transparent;
+}
+.notif-btn:hover { background: var(--border); }
+
+.notif-dot {
+  position: absolute;
+  top: 7px; right: 7px;
+  width: 9px; height: 9px;
+  background: var(--orange);
+  border-radius: 50%;
+  border: 2px solid var(--nav-bg);
+  animation: notif-pulse 1.8s infinite;
+}
+@keyframes notif-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%       { transform: scale(1.3); opacity: .7; }
+}
+
+.notif-panel {
+  position: fixed;
+  top: calc(var(--nav-h) + 8px);
+  right: 12px;
+  width: 320px;
+  max-width: calc(100vw - 24px);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+  z-index: 150;
+  overflow: hidden;
+}
+.notif-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .85rem 1rem;
+  border-bottom: 1px solid var(--border);
+  font-size: .8rem;
+  font-weight: 700;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.notif-list {
+  max-height: 340px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.notif-empty {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--muted);
+  font-size: .84rem;
+}
+.notif-item {
+  display: flex;
+  align-items: flex-start;
+  gap: .75rem;
+  padding: .8rem 1rem;
+  border-bottom: 1px solid var(--border);
+  transition: background .15s;
+}
+.notif-item:last-child { border-bottom: none; }
+.notif-item:hover { background: var(--bg); }
+.notif-icon { font-size: 1.2rem; flex-shrink: 0; margin-top: 1px; }
+.notif-content { flex: 1; }
+.notif-msg  { font-size: .82rem; color: var(--text2); line-height: 1.5; }
+.notif-time { font-size: .72rem; color: var(--muted); margin-top: 3px; }
+.notif-success .notif-msg { color: var(--green); }
+.notif-warning .notif-msg { color: var(--orange); }
+.notif-meal    { background: rgba(82,183,136,0.04); }
+
+/* =============================================
+   VISUAL BACKGROUNDS — PAGE PATTERNS
+   ============================================= */
+.page-bg-meals {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse at 10% 20%, rgba(82,183,136,0.07) 0%, transparent 55%),
+    radial-gradient(ellipse at 90% 80%, rgba(231,111,81,0.06) 0%, transparent 55%);
+}
+
+#page-dashboard { position: relative; }
+#page-dashboard::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 260px;
+  background: linear-gradient(160deg, rgba(82,183,136,0.06) 0%, transparent 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+#page-dashboard > * { position: relative; z-index: 1; }
+
+#page-recommendations { position: relative; }
+#page-recommendations::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 80% 10%, rgba(45,106,79,0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 20% 90%, rgba(249,199,79,0.05) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* =============================================
+   SMART MEAL RECOMMENDATIONS PAGE
+   ============================================= */
+.meal-reco-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem 1.25rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+.meal-filter-row {
+  display: flex;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+.meal-filter-btn {
+  padding: .45rem 1rem;
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  background: none;
+  font-family: var(--font);
+  font-size: .82rem;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all .2s;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 36px;
+}
+.meal-filter-btn:hover  { border-color: var(--green-light); color: var(--green); }
+.meal-filter-btn.active { background: var(--green); border-color: var(--green); color: #fff; font-weight: 600; }
+
+.meal-reco-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+  min-height: 200px;
+}
+.meal-reco-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.meal-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+  transition: box-shadow .2s, transform .2s;
+  position: relative;
+  overflow: hidden;
+}
+.meal-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--green), var(--green-light));
+}
+.meal-card:hover { box-shadow: 0 8px 30px var(--shadow); transform: translateY(-2px); }
+
+.meal-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+}
+.meal-type-tag {
+  font-size: .68rem;
+  font-weight: 700;
+  padding: .22rem .7rem;
+  border-radius: 999px;
+  text-transform: capitalize;
+  letter-spacing: .3px;
+}
+.meal-card-emoji {
+  font-size: 2.6rem;
+  line-height: 1;
+  margin: .25rem 0;
+}
+.meal-card-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.3;
+}
+.meal-card-desc {
+  font-size: .8rem;
+  color: var(--muted);
+  line-height: 1.55;
+}
+.meal-card-why {
+  font-size: .75rem;
+  color: var(--green);
+  font-weight: 600;
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  line-height: 1.4;
+}
+.meal-card-meta {
+  display: flex;
+  gap: .8rem;
+  flex-wrap: wrap;
+}
+.meal-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: .76rem;
+  font-weight: 600;
+  color: var(--text2);
+}
+.meal-nutrients {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+}
+.btn-log-meal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: .25rem;
+  padding: .65rem 1rem;
+  background: var(--green-pale);
+  color: var(--green);
+  border: 1.5px solid var(--green-light);
+  border-radius: 10px;
+  font-family: var(--font);
+  font-size: .82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .2s;
+  min-height: 42px;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn-log-meal:hover { background: var(--green); color: #fff; }
+
+/* =============================================
+   IMPROVED CONTENT PADDING
+   ============================================= */
+.main {
+  padding: 1.5rem 1.75rem;
+}
+.page-title { margin-bottom: .35rem; }
+.page-sub   { margin-bottom: 1.75rem; }
+.section-hd { margin-bottom: 1rem; }
+.stats-grid { margin-bottom: 1.5rem; }
+.bmi-hero   { margin-bottom: 1.5rem; }
+.dash-tips-row { margin-bottom: 1.5rem; }
+.log-form   { margin-bottom: 1.75rem; }
+
+/* =============================================
+   RESPONSIVE — MEALS PAGE MOBILE
    ============================================= */
 @media (max-width: 900px) {
   #auth-screen { flex-direction: column; }
