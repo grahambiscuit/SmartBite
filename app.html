@@ -87,6 +87,9 @@
     <button class="burger-link" onclick="window.showPage('log'); window.closeBurger()">
       <i data-lucide="clipboard-list" width="18" height="18"></i> Food Log
     </button>
+    <button class="burger-link" onclick="window.showPage('meals'); window.closeBurger()">
+      <i data-lucide="chef-hat" width="18" height="18"></i> Meal Ideas
+    </button>
     <button class="burger-link" onclick="window.showPage('recommendations'); window.closeBurger()">
       <i data-lucide="lightbulb" width="18" height="18"></i> Smart Advice
     </button>
@@ -200,8 +203,13 @@
           <div class="pass-hint" id="pass-match-hint"></div>
         </div>
         <div class="field-row">
-          <div class="field"><label>Age</label>
-            <div class="input-icon-wrap"><i data-lucide="calendar" width="16" height="16" class="input-icon"></i><input type="number" id="reg-age" placeholder="25" min="10" max="100"></div>
+          <div class="field">
+            <label>Birthday</label>
+            <div class="input-icon-wrap">
+              <i data-lucide="cake" width="16" height="16" class="input-icon"></i>
+              <input type="date" id="reg-birthday" oninput="window.calcAgeFromBirthday('reg-birthday','reg-age-display')">
+            </div>
+            <div class="pass-hint" id="reg-age-display" style="color:var(--green);font-weight:600"></div>
           </div>
           <div class="field"><label>Gender</label>
             <select id="reg-gender">
@@ -243,10 +251,27 @@
   <nav>
     <button class="burger-btn" onclick="window.openBurger()"><i data-lucide="menu" width="22" height="22"></i></button>
     <div class="nav-logo">Smart<span>Bite</span></div>
-    <div class="nav-avatar-wrap">
-      <div class="avatar" id="nav-avatar" onclick="window.showPage('profile')">?</div>
+    <div style="display:flex;align-items:center;gap:.5rem">
+      <button class="notif-btn" id="notif-btn" onclick="window.toggleNotifPanel()" title="Notifications">
+        <i data-lucide="bell" width="20" height="20"></i>
+        <span class="notif-dot" id="notif-dot" style="display:none"></span>
+      </button>
+      <div class="nav-avatar-wrap">
+        <div class="avatar" id="nav-avatar" onclick="window.showPage('profile')">?</div>
+      </div>
     </div>
   </nav>
+
+  <!-- Notification Panel -->
+  <div class="notif-panel" id="notif-panel" style="display:none">
+    <div class="notif-header">
+      <span><i data-lucide="bell" width="14" height="14"></i> Notifications</span>
+      <button onclick="window.clearNotifs()" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:.75rem;font-weight:600">Clear all</button>
+    </div>
+    <div class="notif-list" id="notif-list">
+      <div class="notif-empty">No notifications yet</div>
+    </div>
+  </div>
 
   <div class="main main-with-bnav" id="main-content">
 
@@ -406,6 +431,38 @@
       </div>
     </div>
 
+    <!-- SMART MEAL RECOMMENDATIONS PAGE -->
+    <div class="page" id="page-meals">
+      <div class="page-bg-meals"></div>
+      <h1 class="page-title">🍽️ Meal Recommendations</h1>
+      <p class="page-sub">AI-generated meal ideas personalized to your goal, BMI, and calorie target</p>
+
+      <div class="meal-reco-controls">
+        <div class="meal-filter-row">
+          <button class="meal-filter-btn active" data-mealtype="all" onclick="window.setMealFilter('all', this)">All</button>
+          <button class="meal-filter-btn" data-mealtype="breakfast" onclick="window.setMealFilter('breakfast', this)">Breakfast</button>
+          <button class="meal-filter-btn" data-mealtype="lunch" onclick="window.setMealFilter('lunch', this)">Lunch</button>
+          <button class="meal-filter-btn" data-mealtype="dinner" onclick="window.setMealFilter('dinner', this)">Dinner</button>
+          <button class="meal-filter-btn" data-mealtype="snack" onclick="window.setMealFilter('snack', this)">Snack</button>
+        </div>
+        <button class="btn-primary" style="margin-top:0;max-width:220px" onclick="window.generateMealRecommendations()">
+          <i data-lucide="sparkles" width="15" height="15"></i> Generate Meals
+        </button>
+      </div>
+
+      <div id="meal-reco-loading" style="display:none" class="analysis-loading" style="padding:2rem 0">
+        <div class="spinner"></div> AI is crafting your personalized meal plan…
+      </div>
+
+      <div id="meal-reco-grid" class="meal-reco-grid">
+        <div class="meal-reco-empty">
+          <i data-lucide="chef-hat" width="48" height="48" style="color:var(--muted);margin-bottom:.75rem"></i>
+          <div style="font-weight:600;color:var(--text);margin-bottom:.4rem">Your personalized meals await</div>
+          <div style="font-size:.84rem;color:var(--muted)">Tap "Generate Meals" to get AI-powered meal ideas based on your profile</div>
+        </div>
+      </div>
+    </div>
+
     <!-- PROFILE PAGE -->
     <div class="page" id="page-profile">
       <h1 class="page-title">Profile &amp; Settings</h1>
@@ -441,7 +498,11 @@
               <div class="field"><label>Last Name</label><input type="text" id="set-lname"></div>
             </div>
             <div class="settings-row">
-              <div class="field"><label>Age</label><input type="number" id="set-age"></div>
+              <div class="field">
+                <label>Birthday</label>
+                <input type="date" id="set-birthday" oninput="window.calcAgeFromBirthday('set-birthday','set-age-display')">
+                <div class="pass-hint" id="set-age-display" style="color:var(--green);font-weight:600;margin-top:4px"></div>
+              </div>
               <div class="field"><label>Gender</label>
                 <select id="set-gender">
                   <option value="male">Male</option>
@@ -487,6 +548,10 @@
       <button class="bn-item" id="bn-log" onclick="window.showPage('log')">
         <div class="bn-item-icon"><i data-lucide="camera" width="22" height="22"></i></div>
         <span>Log Food</span>
+      </button>
+      <button class="bn-item" id="bn-meals" onclick="window.showPage('meals')">
+        <div class="bn-item-icon"><i data-lucide="chef-hat" width="22" height="22"></i></div>
+        <span>Meals</span>
       </button>
       <button class="bn-item" id="bn-recommendations" onclick="window.showPage('recommendations')">
         <div class="bn-item-icon"><i data-lucide="lightbulb" width="22" height="22"></i></div>
