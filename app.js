@@ -1,5 +1,5 @@
 /* =============================================
-   SMARTBITE — app.js  (Final Version)
+   SMARTBITE — app.js  (Enhanced Version)
    ============================================= */
 
 import { initializeApp }                         from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -191,8 +191,285 @@ function safeParseJSON(text) {
 }
 
 // =============================================================================
-// DARK MODE
+// BIRTHDAY → AUTO-CALCULATE AGE
 // =============================================================================
+function calcAgeFromBirthday(inputId, displayId) {
+  const val = document.getElementById(inputId).value;
+  const display = document.getElementById(displayId);
+  if (!val) { display.textContent = ''; return; }
+  const dob   = new Date(val);
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const m = today.getMonth() - dob.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+  if (age < 0 || age > 130) { display.textContent = 'Invalid date'; display.style.color = 'var(--red)'; return; }
+  display.textContent = `Age: ${age} years old`;
+  display.style.color = 'var(--green)';
+  // Store computed age in a hidden data attribute for retrieval
+  document.getElementById(inputId).dataset.age = age;
+}
+
+function getAgeFromBirthday(birthday) {
+  if (!birthday) return null;
+  const dob   = new Date(birthday);
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const m = today.getMonth() - dob.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+  return age;
+}
+
+// =============================================================================
+// NOTIFICATION SYSTEM
+// =============================================================================
+let NOTIFICATIONS = JSON.parse(localStorage.getItem('sb-notifs') || '[]');
+
+function addNotif(msg, type = 'info') {
+  const icons = { info: '💡', success: '✅', warning: '⚠️', meal: '🍽️' };
+  NOTIFICATIONS.unshift({ id: Date.now(), msg, type, icon: icons[type] || '🔔', time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
+  if (NOTIFICATIONS.length > 20) NOTIFICATIONS = NOTIFICATIONS.slice(0, 20);
+  localStorage.setItem('sb-notifs', JSON.stringify(NOTIFICATIONS));
+  renderNotifPanel();
+  const dot = document.getElementById('notif-dot');
+  if (dot) dot.style.display = 'block';
+}
+
+function renderNotifPanel() {
+  const list = document.getElementById('notif-list');
+  if (!list) return;
+  if (NOTIFICATIONS.length === 0) {
+    list.innerHTML = '<div class="notif-empty">No notifications yet</div>';
+    return;
+  }
+  list.innerHTML = NOTIFICATIONS.map(n => `
+    <div class="notif-item notif-${n.type}">
+      <span class="notif-icon">${n.icon}</span>
+      <div class="notif-content">
+        <div class="notif-msg">${n.msg}</div>
+        <div class="notif-time">${n.time}</div>
+      </div>
+    </div>`).join('');
+}
+
+function toggleNotifPanel() {
+  const panel = document.getElementById('notif-panel');
+  const dot   = document.getElementById('notif-dot');
+  if (!panel) return;
+  const isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen && dot) dot.style.display = 'none';
+  renderNotifPanel();
+}
+
+function clearNotifs() {
+  NOTIFICATIONS = [];
+  localStorage.setItem('sb-notifs', JSON.stringify(NOTIFICATIONS));
+  renderNotifPanel();
+  const dot = document.getElementById('notif-dot');
+  if (dot) dot.style.display = 'none';
+}
+
+function requestBrowserNotif() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+}
+
+function sendBrowserNotif(title, body) {
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification(title, { body, icon: '/favicon.ico' });
+  }
+}
+
+function checkDailyReminders() {
+  if (!USER) return;
+  const today     = new Date().toDateString();
+  const todayLogs = FOOD_LOG.filter(f => new Date(f.date).toDateString() === today);
+  const hour      = new Date().getHours();
+  const totalCals = todayLogs.reduce((s, f) => s + (f.calories || 0), 0);
+  const target    = USER.cals || 2000;
+
+  if (hour >= 8 && todayLogs.length === 0) {
+    addNotif("Good morning! Don't forget to log your breakfast 🌅", 'info');
+    sendBrowserNotif('SmartBite', "Good morning! Log your breakfast to start tracking.");
+  }
+  if (hour >= 13 && hour < 14 && todayLogs.filter(f => f.meal === 'lunch').length === 0) {
+    addNotif("Lunchtime! Log your midday meal to stay on track 🥗", 'info');
+  }
+  if (hour >= 18 && totalCals < target * 0.5) {
+    addNotif(`You've only hit ${totalCals} kcal — try to reach your ${target} kcal goal tonight 🎯`, 'warning');
+  }
+  if (totalCals > target * 1.1) {
+    addNotif(`You've exceeded your daily target by ${totalCals - target} kcal. Stay balanced! ⚠️`, 'warning');
+  }
+}
+
+// Close notif panel when clicking outside
+document.addEventListener('click', (e) => {
+  const panel = document.getElementById('notif-panel');
+  const btn   = document.getElementById('notif-btn');
+  if (panel && panel.style.display !== 'none' && !panel.contains(e.target) && btn && !btn.contains(e.target)) {
+    panel.style.display = 'none';
+  }
+});
+
+// =============================================================================
+// SMART MEAL RECOMMENDATIONS
+// =============================================================================
+let CURRENT_MEAL_FILTER = 'all';
+let MEAL_RECOMMENDATIONS = [];
+
+function setMealFilter(type, btn) {
+  CURRENT_MEAL_FILTER = type;
+  document.querySelectorAll('.meal-filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderMealGrid();
+}
+
+async function generateMealRecommendations() {
+  if (!USER) return;
+  const grid    = document.getElementById('meal-reco-grid');
+  const loading = document.getElementById('meal-reco-loading');
+  loading.style.display = 'flex';
+  grid.style.display    = 'none';
+
+  const bmi     = calcBMI(USER.height, USER.weight);
+  const today   = new Date().toDateString();
+  const todayLogs = FOOD_LOG.filter(f => new Date(f.date).toDateString() === today);
+  const todaySum  = todayLogs.map(f => f.name).join(', ') || 'nothing yet';
+  const calsLeft  = (USER.cals || 2000) - todayLogs.reduce((s, f) => s + (f.calories || 0), 0);
+
+  const prompt = `You are a certified nutritionist AI for SmartBite.
+Generate exactly 8 personalized meal recommendations for this user.
+Return ONLY valid JSON array, no markdown:
+[
+  {
+    "meal_type": "breakfast" | "lunch" | "dinner" | "snack",
+    "name": "Meal name",
+    "emoji": "one food emoji",
+    "calories": realistic_number,
+    "rating": "healthy" | "moderate",
+    "prep_time": "e.g. 10 min",
+    "description": "1 sentence describing the meal and why it suits the user",
+    "nutrients": ["Protein", "Fiber", "Iron"],
+    "why_for_you": "short reason this fits their goal"
+  }
+]
+
+User profile:
+- Name: ${USER.fname}
+- Goal: ${USER.goal}
+- BMI: ${bmi}
+- Age: ${USER.age}
+- Gender: ${USER.gender}
+- Daily calorie target: ${USER.cals} kcal
+- Calories remaining today: ${calsLeft > 0 ? calsLeft : 0} kcal
+- Already eaten today: ${todaySum}
+
+Requirements:
+- 2 breakfasts, 2 lunches, 2 dinners, 2 snacks
+- All meals should fit their ${USER.goal} goal
+- Include some Filipino food options (e.g. lugaw, tinola, sinigang, fresh lumpia, champorado)
+- Keep calories realistic and practical`;
+
+  try {
+    const raw  = await callGroq({ system: 'You are a certified nutritionist. Return only valid JSON array. No markdown, no explanation.', prompt });
+    const data = safeParseJSON(raw);
+    MEAL_RECOMMENDATIONS = Array.isArray(data) ? data : [];
+    addNotif(`✨ ${MEAL_RECOMMENDATIONS.length} personalized meals generated for you!`, 'meal');
+    sendBrowserNotif('SmartBite', `Your personalized meal plan is ready! ${MEAL_RECOMMENDATIONS.length} meals suggested.`);
+  } catch (err) {
+    MEAL_RECOMMENDATIONS = getStaticMealFallback(USER.goal);
+    addNotif('Showing curated meal suggestions (AI unavailable)', 'info');
+  }
+
+  loading.style.display = 'none';
+  grid.style.display    = 'grid';
+  renderMealGrid();
+  if (window.lucide) lucide.createIcons();
+}
+
+function renderMealGrid() {
+  const grid = document.getElementById('meal-reco-grid');
+  if (!grid) return;
+
+  const filtered = CURRENT_MEAL_FILTER === 'all'
+    ? MEAL_RECOMMENDATIONS
+    : MEAL_RECOMMENDATIONS.filter(m => m.meal_type === CURRENT_MEAL_FILTER);
+
+  if (filtered.length === 0 && MEAL_RECOMMENDATIONS.length === 0) {
+    grid.innerHTML = `<div class="meal-reco-empty">
+      <i data-lucide="chef-hat" width="48" height="48" style="color:var(--muted);margin-bottom:.75rem"></i>
+      <div style="font-weight:600;color:var(--text);margin-bottom:.4rem">Your personalized meals await</div>
+      <div style="font-size:.84rem;color:var(--muted)">Tap "Generate Meals" to get AI-powered meal ideas based on your profile</div>
+    </div>`;
+    if (window.lucide) lucide.createIcons();
+    return;
+  }
+  if (filtered.length === 0) {
+    grid.innerHTML = `<div class="meal-reco-empty"><div style="font-size:.9rem;color:var(--muted)">No ${CURRENT_MEAL_FILTER} options generated. Try regenerating!</div></div>`;
+    return;
+  }
+
+  const mealColors = { breakfast: '#E3F2FD', lunch: '#E8F5E9', dinner: '#FFF3E0', snack: '#FCE4EC' };
+  const mealText   = { breakfast: '#1565C0', lunch: '#2E7D32', dinner: '#E65100', snack: '#C2185B' };
+
+  grid.innerHTML = filtered.map(m => {
+    const bc   = m.rating === 'healthy' ? 'badge-healthy' : 'badge-moderate';
+    const mtBg = mealColors[m.meal_type] || '#F5F9F6';
+    const mtTx = mealText[m.meal_type]   || '#374151';
+    return `
+    <div class="meal-card">
+      <div class="meal-card-top">
+        <span class="meal-type-tag" style="background:${mtBg};color:${mtTx}">${m.meal_type}</span>
+        <span class="entry-badge ${bc}">${m.rating}</span>
+      </div>
+      <div class="meal-card-emoji">${m.emoji || '🍽️'}</div>
+      <div class="meal-card-name">${m.name}</div>
+      <div class="meal-card-desc">${m.description}</div>
+      <div class="meal-card-why">
+        <i data-lucide="target" width="12" height="12"></i> ${m.why_for_you}
+      </div>
+      <div class="meal-card-meta">
+        <span class="meal-meta-item"><i data-lucide="flame" width="12" height="12"></i> ${m.calories} kcal</span>
+        <span class="meal-meta-item"><i data-lucide="clock" width="12" height="12"></i> ${m.prep_time || '15 min'}</span>
+      </div>
+      <div class="meal-nutrients">
+        ${(m.nutrients || []).map(n => `<span class="tip-tag" style="background:var(--green-pale);color:var(--green)">${n}</span>`).join('')}
+      </div>
+      <button class="btn-log-meal" onclick="window.logMealFromReco('${m.name.replace(/'/g,"\\'")}', ${m.calories}, '${m.meal_type}', '${m.rating}')">
+        <i data-lucide="plus-circle" width="14" height="14"></i> Log This Meal
+      </button>
+    </div>`;
+  }).join('');
+  if (window.lucide) lucide.createIcons();
+}
+
+async function logMealFromReco(name, calories, mealType, rating) {
+  const entry = {
+    name, calories, meal: mealType, rating,
+    date: new Date().toISOString(), analysis: 'Logged from Meal Recommendations', hasPhoto: false
+  };
+  const firestoreId = await addFoodEntry(entry);
+  FOOD_LOG.push({ firestoreId, ...entry });
+  updateDashboard();
+  showToast(`${name} logged! (${calories} kcal) ✅`);
+  addNotif(`Logged: ${name} — ${calories} kcal`, 'success');
+}
+
+function getStaticMealFallback(goal) {
+  const base = [
+    { meal_type:'breakfast', name:'Oatmeal with Banana', emoji:'🥣', calories:320, rating:'healthy', prep_time:'10 min', description:'Slow-digesting oats topped with banana for natural sweetness and potassium.', nutrients:['Fiber','Potassium','Complex Carbs'], why_for_you:'Great for sustained energy and keeping you full.' },
+    { meal_type:'breakfast', name:'Champorado (Cacao Rice Porridge)', emoji:'🍚', calories:280, rating:'moderate', prep_time:'15 min', description:'Filipino classic made with sticky rice and tablea cacao — comforting and energizing.', nutrients:['Carbs','Iron','Antioxidants'], why_for_you:'A warm, satisfying Filipino breakfast option.' },
+    { meal_type:'lunch', name:'Sinigang na Hipon', emoji:'🍲', calories:310, rating:'healthy', prep_time:'30 min', description:'Sour tamarind soup with shrimp and leafy vegetables — nutritious and low-calorie.', nutrients:['Protein','Vitamin C','Iron'], why_for_you:'Low-calorie, high-protein Filipino classic.' },
+    { meal_type:'lunch', name:'Grilled Chicken with Brown Rice', emoji:'🍗', calories:450, rating:'healthy', prep_time:'25 min', description:'Lean protein with complex carbs for a balanced, satisfying midday meal.', nutrients:['Protein','B Vitamins','Fiber'], why_for_you:'High-protein to support muscle and satiety.' },
+    { meal_type:'dinner', name:'Tinola (Chicken & Ginger Soup)', emoji:'🥣', calories:270, rating:'healthy', prep_time:'35 min', description:'Light Filipino chicken soup with malunggay leaves — rich in vitamins.', nutrients:['Protein','Vitamin A','Iron'], why_for_you:'Light, nutritious dinner packed with micronutrients.' },
+    { meal_type:'dinner', name:'Baked Salmon with Vegetables', emoji:'🐟', calories:380, rating:'healthy', prep_time:'20 min', description:'Omega-3-rich salmon with roasted veggies for a heart-healthy dinner.', nutrients:['Omega-3','Protein','Vitamin D'], why_for_you:'Excellent for heart health and inflammation.' },
+    { meal_type:'snack', name:'Fresh Lumpia', emoji:'🌯', calories:150, rating:'healthy', prep_time:'10 min', description:'Fresh vegetable-filled Filipino wrap — crunchy and light.', nutrients:['Fiber','Vitamins','Minerals'], why_for_you:'Light and nutrient-dense Filipino snack.' },
+    { meal_type:'snack', name:'Mixed Tropical Fruits', emoji:'🍍', calories:110, rating:'healthy', prep_time:'5 min', description:'Mango, papaya, and pineapple — natural sugars with enzymes and vitamins.', nutrients:['Vitamin C','Enzymes','Fiber'], why_for_you:'Naturally sweet and packed with local nutrients.' },
+  ];
+  return base;
+}
 function toggleTheme() {
   const html   = document.documentElement;
   const isDark = html.getAttribute('data-theme') === 'dark';
@@ -541,20 +818,23 @@ async function doLogin() {
 }
 
 async function doRegister() {
-  const fname   = document.getElementById('reg-fname').value.trim();
-  const lname   = document.getElementById('reg-lname').value.trim();
-  const email   = document.getElementById('reg-email').value.trim();
-  const pass    = document.getElementById('reg-pass').value;
-  const confirm = document.getElementById('reg-pass-confirm').value;
-  const age     = document.getElementById('reg-age').value;
-  const gender  = document.getElementById('reg-gender').value;
-  const height  = document.getElementById('reg-height').value;
-  const weight  = document.getElementById('reg-weight').value;
-  const goal    = document.getElementById('reg-goal').value;
-  const termsOk = document.getElementById('reg-terms').checked;
+  const fname    = document.getElementById('reg-fname').value.trim();
+  const lname    = document.getElementById('reg-lname').value.trim();
+  const email    = document.getElementById('reg-email').value.trim();
+  const pass     = document.getElementById('reg-pass').value;
+  const confirm  = document.getElementById('reg-pass-confirm').value;
+  const birthday = document.getElementById('reg-birthday').value;
+  const gender   = document.getElementById('reg-gender').value;
+  const height   = document.getElementById('reg-height').value;
+  const weight   = document.getElementById('reg-weight').value;
+  const goal     = document.getElementById('reg-goal').value;
+  const termsOk  = document.getElementById('reg-terms').checked;
+  const age      = birthday ? getAgeFromBirthday(birthday) : null;
 
-  if (!fname || !email || !pass || !confirm || !age || !gender || !height || !weight)
+  if (!fname || !email || !pass || !confirm || !birthday || !gender || !height || !weight)
     { showToast('Please fill in all fields'); return; }
+  if (age === null || age < 10 || age > 120)
+    { showToast('Please enter a valid birthday'); return; }
   if (!email.endsWith('@gmail.com'))
     { showToast('Only Gmail addresses are accepted'); return; }
   if (pass.length < 8)
@@ -576,8 +856,8 @@ async function doRegister() {
     expires: Date.now() + 10 * 60 * 1000,
     profile: {
       fname, lname, email,
-      age: +age, gender, height: +height, weight: +weight, goal,
-      cals: calcCalTarget(+age, gender, +height, +weight, goal),
+      birthday, age, gender, height: +height, weight: +weight, goal,
+      cals: calcCalTarget(age, gender, +height, +weight, goal),
       agreedToTerms: true,
       createdAt: new Date().toISOString()
     }
@@ -617,6 +897,9 @@ function enterApp() {
   loadProfilePic();
   updateDashboard();
   loadProfileForm();
+  renderNotifPanel();
+  requestBrowserNotif();
+  setTimeout(() => checkDailyReminders(), 2000);
   if (window.lucide) lucide.createIcons();
 }
 
@@ -628,7 +911,7 @@ function showPage(p) {
   if (p === 'dashboard')       updateDashboard();
   if (p === 'recommendations') { renderNutritionTips(); }
   if (p === 'log')             renderLogEntries();
-  // Scroll to top on page change (mobile)
+  if (p === 'meals')           renderMealGrid();
   const main = document.getElementById('main-content');
   if (main) main.scrollTop = 0;
   window.scrollTo(0, 0);
@@ -636,7 +919,7 @@ function showPage(p) {
 }
 
 function updateBottomNav(p) {
-  ['dashboard','log','recommendations','profile'].forEach(name => {
+  ['dashboard','log','meals','recommendations','profile'].forEach(name => {
     const btn = document.getElementById('bn-' + name);
     if (btn) btn.classList.toggle('active', name === p);
   });
@@ -1057,9 +1340,14 @@ function renderNutritionTips() {
 // =============================================================================
 function loadProfileForm() {
   if (!USER) return;
-  document.getElementById('set-fname').value  = USER.fname  || '';
-  document.getElementById('set-lname').value  = USER.lname  || '';
-  document.getElementById('set-age').value    = USER.age    || '';
+  document.getElementById('set-fname').value    = USER.fname    || '';
+  document.getElementById('set-lname').value    = USER.lname    || '';
+  document.getElementById('set-birthday').value = USER.birthday || '';
+  if (USER.birthday) {
+    const age = getAgeFromBirthday(USER.birthday);
+    const disp = document.getElementById('set-age-display');
+    if (disp) { disp.textContent = `Age: ${age} years old`; disp.style.color = 'var(--green)'; }
+  }
   document.getElementById('set-gender').value = USER.gender || 'male';
   document.getElementById('set-height').value = USER.height || '';
   document.getElementById('set-weight').value = USER.weight || '';
@@ -1075,14 +1363,16 @@ function loadProfileForm() {
 }
 
 async function saveProfile() {
-  USER.fname  = document.getElementById('set-fname').value.trim();
-  USER.lname  = document.getElementById('set-lname').value.trim();
-  USER.age    = +document.getElementById('set-age').value;
-  USER.gender = document.getElementById('set-gender').value;
-  USER.height = +document.getElementById('set-height').value;
-  USER.weight = +document.getElementById('set-weight').value;
-  USER.goal   = document.getElementById('set-goal').value;
-  USER.cals   = +document.getElementById('set-cals').value
+  USER.fname    = document.getElementById('set-fname').value.trim();
+  USER.lname    = document.getElementById('set-lname').value.trim();
+  const bday    = document.getElementById('set-birthday').value;
+  USER.birthday = bday;
+  USER.age      = bday ? getAgeFromBirthday(bday) : (USER.age || 0);
+  USER.gender   = document.getElementById('set-gender').value;
+  USER.height   = +document.getElementById('set-height').value;
+  USER.weight   = +document.getElementById('set-weight').value;
+  USER.goal     = document.getElementById('set-goal').value;
+  USER.cals     = +document.getElementById('set-cals').value
     || calcCalTarget(USER.age, USER.gender, USER.height, USER.weight, USER.goal);
 
   await saveUserProfile(auth.currentUser.uid, USER);
@@ -1092,6 +1382,7 @@ async function saveProfile() {
   document.getElementById('burger-name').textContent   = USER.fname + ' ' + USER.lname;
   updateDashboard();
   loadProfileForm();
+  addNotif('Profile updated successfully ✅', 'success');
   showToast('Profile saved successfully!');
 }
 
@@ -1103,32 +1394,38 @@ initTheme();
 // =============================================================================
 // EXPOSE TO GLOBAL SCOPE
 // =============================================================================
-window.switchTab              = switchTab;
-window.doLogin                = doLogin;
-window.doRegister             = doRegister;
-window.doLogout               = doLogout;
-window.showPage               = showPage;
-window.logFood                = logFood;
-window.deleteEntry            = deleteEntry;
-window.saveProfile            = saveProfile;
-window.generateWeeklyInsights = generateWeeklyInsights;
-window.generateAIAdvice       = generateAIAdvice;
-window.checkPassStrength      = checkPassStrength;
-window.checkPassMatch         = checkPassMatch;
-window.checkGmail             = checkGmail;
-window.togglePass             = togglePass;
-window.toggleTheme            = toggleTheme;
-window.openBurger             = openBurger;
-window.closeBurger            = closeBurger;
-window.openTerms              = openTerms;
-window.closeTerms             = closeTerms;
-window.acceptTerms            = acceptTerms;
-window.otpMove                = otpMove;
-window.otpBack                = otpBack;
-window.verifyOTP              = verifyOTP;
-window.resendOTP              = resendOTP;
-window.closeOTP               = closeOTP;
-window.handleProfilePic       = handleProfilePic;
-window.handleFoodPhoto        = handleFoodPhoto;
-window.handlePhotoDrop        = handlePhotoDrop;
-window.clearFoodPhoto         = clearFoodPhoto;
+window.switchTab                  = switchTab;
+window.doLogin                    = doLogin;
+window.doRegister                 = doRegister;
+window.doLogout                   = doLogout;
+window.showPage                   = showPage;
+window.logFood                    = logFood;
+window.deleteEntry                = deleteEntry;
+window.saveProfile                = saveProfile;
+window.generateWeeklyInsights     = generateWeeklyInsights;
+window.generateAIAdvice           = generateAIAdvice;
+window.generateMealRecommendations= generateMealRecommendations;
+window.setMealFilter              = setMealFilter;
+window.logMealFromReco            = logMealFromReco;
+window.checkPassStrength          = checkPassStrength;
+window.checkPassMatch             = checkPassMatch;
+window.checkGmail                 = checkGmail;
+window.togglePass                 = togglePass;
+window.toggleTheme                = toggleTheme;
+window.openBurger                 = openBurger;
+window.closeBurger                = closeBurger;
+window.openTerms                  = openTerms;
+window.closeTerms                 = closeTerms;
+window.acceptTerms                = acceptTerms;
+window.otpMove                    = otpMove;
+window.otpBack                    = otpBack;
+window.verifyOTP                  = verifyOTP;
+window.resendOTP                  = resendOTP;
+window.closeOTP                   = closeOTP;
+window.handleProfilePic           = handleProfilePic;
+window.handleFoodPhoto            = handleFoodPhoto;
+window.handlePhotoDrop            = handlePhotoDrop;
+window.clearFoodPhoto             = clearFoodPhoto;
+window.calcAgeFromBirthday        = calcAgeFromBirthday;
+window.toggleNotifPanel           = toggleNotifPanel;
+window.clearNotifs                = clearNotifs;
