@@ -1,25 +1,25 @@
-# 🥗 SmartBite — Your Nutrition Companion
+#  SmartBite — Your Nutrition Companion
 
 > An intelligent, AI-powered nutrition tracking web app that helps you log meals, analyze food, track your BMI, and receive personalized health advice — all in one place.
 
 ---
 
-## 🚀 Live Demo
+##  Live Demo
 
-🔗 [smart-bite-two.vercel.app](https://smart-bite-two.vercel.app)
+ [smart-bite-two.vercel.app](https://smart-bite-two.vercel.app)
 
 ---
 
-## 📸 Features
+##  Features
 
-### 🔐 Authentication
+###  Authentication
 - Email & password registration with **confirm password** validation
 - **Password strength meter** (Weak → Fair → Good → Strong)
 - **OTP email verification** via EmailJS — a 6-digit code is sent to the user's inbox before the account is created
 - **Terms of Service & Privacy Policy** agreement required at registration
 - Secure sign-in and logout powered by **Firebase Authentication**
 
-### 📊 Dashboard
+###  Dashboard
 - Personalized greeting based on time of day
 - **BMI calculator** with category badge (Underweight / Normal / Overweight / Obese)
 - **Daily calorie tracker** with visual progress bar vs. your calorie goal
@@ -27,23 +27,23 @@
 - Recent food log chips with color-coded health ratings
 - **Smart Recommendations** — dynamic tips based on your BMI, calorie intake, and food choices
 
-### 🍽️ Food Log
+###  Food Log
 - Log any meal with food name, estimated calories, and meal type (Breakfast / Lunch / Dinner / Snack)
 - **AI-powered food analysis** via Claude API — get instant rating (Healthy / Moderate / Unhealthy), calorie estimate, nutrient highlights, and a personalized tip
 - Delete individual food entries
 - Today's log displayed in real time
 
-### 💡 Smart Advice
+###  Smart Advice
 - **Daily Goals Progress** — calorie, healthy food ratio, and meals logged bars
 - **Weekly Insights** — AI-generated coaching based on your recent food history
 - **Nutrition Tips Panel** — goal-based static tip cards that update automatically when your goal changes:
-  - 🥦 Lose Weight
-  - ⚖️ Maintain Weight
-  - 🏋️ Gain Muscle
-  - 🌿 Eat Healthier
+  -  Lose Weight
+  -  Maintain Weight
+  -  Gain Muscle
+  -  Eat Healthier
 - "Did you know?" fact card at the bottom of each goal set
 
-### 👤 Profile & Settings
+###  Profile & Settings
 - Edit personal info: name, age, gender
 - Update body metrics: height, weight
 - Change primary goal and daily calorie target
@@ -52,7 +52,7 @@
 
 ---
 
-## 🛠️ Tech Stack
+##  Tech Stack
 
 | Layer | Technology |
 |---|---|
@@ -65,7 +65,7 @@
 
 ---
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 smartbite/
@@ -77,7 +77,7 @@ smartbite/
 
 ---
 
-## ⚙️ Setup & Installation
+##  Setup & Installation
 
 ### 1. Clone the repository
 ```bash
@@ -134,13 +134,13 @@ Or simply drag and drop your project folder into [vercel.com](https://vercel.com
 
 ---
 
-## 🔑 Environment Notes
+##  Environment Notes
 
 > **Important:** This project calls the Anthropic Claude API directly from the browser for food analysis and weekly insights. For production use, it is strongly recommended to proxy these requests through a backend server to keep your API key secure.
 
 ---
 
-## 📧 OTP Flow
+##  OTP Flow
 
 ```
 User fills registration form
@@ -155,12 +155,12 @@ OTP overlay appears → user enters code
         ↓
 verifyOTP() → checks code + expiry (10 minutes)
         ↓
-✅ Firebase account created + profile saved to Firestore
+ Firebase account created + profile saved to Firestore
 ```
 
 ---
 
-## 🎯 Goal-Based Nutrition Tips
+##  Goal-Based Nutrition Tips
 
 SmartBite shows different tip cards depending on the user's selected goal:
 
@@ -173,7 +173,7 @@ SmartBite shows different tip cards depending on the user's selected goal:
 
 ---
 
-## 🙏 Credits
+##  Credits
 
 - **AI Analysis** — [Anthropic Claude](https://anthropic.com)
 - **Authentication & Database** — [Firebase by Google](https://firebase.google.com)
