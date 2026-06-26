@@ -183,6 +183,6 @@ SmartBite shows different tip cards depending on the user's selected goal:
 
 ---
 
-## 📄 License
+##  License
 
 This project is for educational and personal use. All rights reserved © 2026 SmartBite.
